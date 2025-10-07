@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dashboard - Taller Toreto</title>
+    <link rel="stylesheet" href="../Css/dashboard.css" />
+  </head>
+  <body>
+    <!-- Video de fondo (usado en todas las páginas) -->
+    <video id="bg-video" autoplay muted loop>
+      <source src="../images/fondo proyecto.mp4" type="video/mp4" />
+      Tu navegador no soporta video de fondo.
+    </video>
+
+    <div class="overlay"></div>
+
+    <header class="topbar">
+      <div class="left">
+        <img src="../images/logo.webp" alt="Logo" class="logo" />
+      </div>
+
+      <nav class="main-nav">
+        <a href="#" id="nav-home" class="nav-link">Inicio</a>
+        <a href="#" id="nav-contact" class="nav-link">Contáctanos</a>
+        <a href="#" id="nav-services" class="nav-link">Servicios</a>
+      </nav>
+
+      <div class="center-search">
+        <div class="search-box">
+          <input id="siteSearch" type="search" placeholder="Buscar servicios o repuestos..." aria-label="Buscar" />
+          <button id="cartToggle" class="cart-btn" aria-label="Ver carrito">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M7 4h-2l-1 2h2l3.6 7.59-1.35 2.45C8.52 16.37 9.48 18 11 18h7v-2h-6.1c-.14 0-.25-.09-.29-.22L15 11h4V9h-5.2L12.6 6H7V4z"/></svg>
+            <span id="cartCount" class="cart-count">0</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="right">
+        <button id="userBtn" class="user-btn" aria-haspopup="true" aria-controls="userMenu" aria-expanded="false">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+            <path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.4c-3.3 0-9.9 1.7-9.9 5v1.6h19.8V19.4c0-3.3-6.6-5-9.9-5z" />
+          </svg>
+        </button>
+        <div id="userMenu" class="user-menu hidden" role="menu"></div>
+      </div>
+    </header>
+
+  <main class="container" role="main">
+      <section id="home" class="section active">
+        <div class="hero-card">
+          <h1>Bienvenido a Taller Toreto</h1>
+          <p>Panel principal — aquí verás información relevante después de iniciar sesión.</p>
+        </div>
+      </section>
+
+      <section id="contact" class="section">
+        <h2>Contáctanos</h2>
+        <p class="muted">Síguenos y contáctanos por estas redes</p>
+
+        <div class="social-grid">
+          <a class="social social-whatsapp" href="https://wa.me/123456789" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.12"/><path d="M17.6 6.4c-.4-.2-1-.1-1.4.1-.2.1-.4.3-.6.5-.3.4-.6.9-.9 1.4-.3.6-.1 1.2.4 1.6.5.4 1.1.6 1.7.9.6.3 1.2.6 1.8.9.4.2.8.4 1 .7.3.4.3.9.1 1.3-.4.8-1 1.6-1.6 2.3-1.2 1.4-2.6 2.6-4.2 3.6-.9.5-1.9.9-2.9 1.2-.6.2-1.2.3-1.8.1-.7-.2-1.2-.8-1.6-1.4-.5-.9-.9-1.9-1-2.9-.1-.8 0-1.7.3-2.5.3-.9.9-1.7 1.6-2.4.5-.5 1.1-1 1.8-1.3.5-.2 1.1-.2 1.6 0 .6.3 1 .8 1.4 1.3.2.3.5.5.9.4.2 0 .4-.1.6-.2.6-.4 1.1-.9 1.4-1.6.2-.4.1-.9-.3-1.1z" fill="currentColor"/></svg>
+            <span>WhatsApp</span>
+          </a>
+
+          <a class="social social-instagram" href="https://instagram.com/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" fill="currentColor" opacity="0.12"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/><circle cx="17.5" cy="6.5" r="0.8" fill="currentColor"/></svg>
+            <span>Instagram</span>
+          </a>
+
+          <a class="social social-facebook" href="https://facebook.com/" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="3" fill="currentColor" opacity="0.12"/><path d="M15 8h1.8V5.2H15c-1.5 0-2.8 1.2-2.8 2.7V11H10v2.6h2.2V20H15v-6.4H17l.5-2.6H15V8z" fill="currentColor"/></svg>
+            <span>Facebook</span>
+          </a>
+
+          <a class="social social-tiktok" href="https://www.tiktok.com/" target="_blank" rel="noopener noreferrer" aria-label="TikTok">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 3v8.2a4.5 4.5 0 1 1-4.5-4.4V6.2c0-.1 0-.2.1-.3.1-.1.2-.2.3-.2H16z" fill="currentColor" opacity="0.95"/></svg>
+            <span>TikTok</span>
+          </a>
+        </div>
+      </section>
+
+      <section id="services" class="section">
+        <h2>Nuestros servicios</h2>
+        <div class="cards">
+          <article class="card">
+            <img src="../images/mecanico.jpg" alt="Alquiler de mecánico" />
+            <h3>Alquiler de mecánico</h3>
+            <p>Profesionales disponibles por hora o por contrato.</p>
+          </article>
+
+          <article class="card">
+            <img src="../images/repuestos.jpg" alt="Repuestos" />
+            <h3>Repuestos</h3>
+            <p>Repuestos originales y alternativas económicas.</p>
+          </article>
+
+          <article class="card">
+            <img src="../images/mantenimiento.jpg" alt="Mantenimiento" />
+            <h3>Mantenimiento</h3>
+            <p>Planes de mantenimiento preventivo y correctivo.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- Cliente: Alquiler de mecánico -->
+      <section id="alquiler" class="section"></section>
+
+      <!-- Cliente: Repuestos list -->
+      <section id="repuestos-list" class="section"></section>
+
+      <!-- Cliente: Mantenimiento list -->
+      <section id="mantenimiento-list" class="section"></section>
+
+      <!-- Secciones privadas por rol (se mostrarán según rol) -->
+      <section id="vehiculos" class="section"></section>
+      <section id="facturas" class="section"></section>
+      <section id="compras" class="section"></section>
+      <section id="admin" class="section"></section>
+    </main>
+
+  <!-- jsPDF (for client-side PDF generation) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="../js/Dashboard/dashboard.js"></script>
+    <!-- Modal para formularios de edición -->
+    <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-hidden="true">
+      <div class="modal-content" role="document">
+        <button id="modalClose" class="modal-close" aria-label="Cerrar">×</button>
+        <div id="modalBody"></div>
+      </div>
+    </div>
+
+    <!-- Toast notifications -->
+    <div id="toasts" class="toasts" aria-live="polite" aria-atomic="true"></div>
+    <!-- Cart panel -->
+    <div id="cartPanel" class="cart-panel hidden" aria-hidden="true">
+      <h4>Carrito</h4>
+      <div id="cartItems" class="cart-items"></div>
+      <div class="cart-footer"><div id="cartTotal">Total: $0.00</div><button id="checkoutBtn" class="btn-primary">Comprar</button></div>
+    </div>
+  </body>
+</html>
