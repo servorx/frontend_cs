@@ -12,12 +12,46 @@ const currentRole = detectRole();
 
 document.addEventListener('DOMContentLoaded', () => {
   initNav();
+  normalizeStoredPurchases();
   renderRoleMenu();
   setupNavLinks();
   setupGlobalHandlers();
   setupModal();
   setupSearchAndCart();
 });
+
+function normalizeStoredPurchases(){
+  try{
+    const purchases = JSON.parse(localStorage.getItem('purchasesDemo')||'[]');
+    let changed = false;
+    const normalized = purchases.map(rec=>{
+      if(!rec.items && rec.cart){ rec.items = rec.cart; }
+      if(!rec.items || !Array.isArray(rec.items)){
+        // legacy simple shape: {id, item, img, fecha}
+        const it = rec.item ? [{name: rec.item, price: rec.price||0, qty: rec.qty||1, img: rec.img||'../images/repuestos.jpg'}] : [];
+        rec.items = it;
+      }
+      rec.items = rec.items.map(it=>({name: it.name||it.item||'Producto', price: Number(it.price||0), qty: Number(it.qty||1), img: it.img || it.imgsrc || '../images/repuestos.jpg'}));
+      rec.total = Number(rec.total || rec.items.reduce((s,i)=>s + (i.price||0)*(i.qty||1),0));
+      return rec;
+    });
+    if(JSON.stringify(purchases) !== JSON.stringify(normalized)){
+      localStorage.setItem('purchasesDemo', JSON.stringify(normalized));
+    }
+  }catch(e){ console.warn('normalize purchases error', e); }
+  try{
+    const invoices = JSON.parse(localStorage.getItem('invoicesDemo')||'[]');
+    const normalizedInv = invoices.map(rec=>{
+      if(!rec.items && rec.cart){ rec.items = rec.cart; }
+      if(rec.items && Array.isArray(rec.items)){
+        rec.items = rec.items.map(it=>({name: it.name||it.item||'Producto', price: Number(it.price||0), qty: Number(it.qty||1), img: it.img || '../images/repuestos.jpg'}));
+        rec.total = Number(rec.total || rec.items.reduce((s,i)=>s + (i.price||0)*(i.qty||1),0));
+      }
+      return rec;
+    });
+    localStorage.setItem('invoicesDemo', JSON.stringify(normalizedInv));
+  }catch(e){ console.warn('normalize invoices error', e); }
+}
 
 function initNav(){
   const userBtn = document.getElementById('userBtn');
@@ -138,18 +172,17 @@ function navigateTo(sectionId){
 function renderServices(){
   // if client, show detailed options
   if(currentRole === 'cliente'){
-    // show services as links to subpages
+    // show services as links to subpages using actual service images
     const sec = document.getElementById('services');
-    const html = document.createElement('div');
-    html.innerHTML = `
-      <h2>Servicios para clientes</h2>
-      <div class="cards">
-        <article class="card"><img src="../images/mecanico.jpg"><h3>Alquiler de mecánico</h3><p>Solicita un mecánico a domicilio</p><div class="card-actions"><button id="goAlquiler" class="btn-primary">Solicitar alquiler</button></div></article>
-        <article class="card"><img src="../images/repuestos.jpg"><h3>Repuestos</h3><p>Compra repuestos para carro o moto</p><div class="card-actions"><button id="goRepuestos" class="btn-primary">Ver repuestos</button></div></article>
-        <article class="card"><img src="../images/mantenimiento.jpg"><h3>Mantenimiento</h3><p>Agenda mantenimiento para tu vehículo</p><div class="card-actions"><button id="goMantenimiento" class="btn-primary">Ver servicios</button></div></article>
-      </div>
-    `;
-    sec.innerHTML = ''; sec.appendChild(html);
+    sec.innerHTML = '';
+    const container = document.createElement('div');
+    const h2 = document.createElement('h2'); h2.textContent = 'Servicios para clientes'; container.appendChild(h2);
+    const cards = document.createElement('div'); cards.className = 'cards';
+    const card1 = document.createElement('article'); card1.className='card'; card1.innerHTML = `<img src="../images/servicios/mecanico.jpg" alt="Alquiler de mecánico"><h3>Alquiler de mecánico</h3><p>Solicita un mecánico a domicilio</p><div class="card-actions"><button id="goAlquiler" class="btn-primary">Solicitar alquiler</button></div>`;
+    const card2 = document.createElement('article'); card2.className='card'; card2.innerHTML = `<img src="../images/servicios/repuestos.jpg" alt="Repuestos"><h3>Repuestos</h3><p>Compra repuestos para carro o moto</p><div class="card-actions"><button id="goRepuestos" class="btn-primary">Ver repuestos</button></div>`;
+    const card3 = document.createElement('article'); card3.className='card'; card3.innerHTML = `<img src="../images/servicios/mantenimiento.jpg" alt="Mantenimiento"><h3>Mantenimiento</h3><p>Agenda mantenimiento para tu vehículo</p><div class="card-actions"><button id="goMantenimiento" class="btn-primary">Ver servicios</button></div>`;
+    cards.appendChild(card1); cards.appendChild(card2); cards.appendChild(card3);
+    container.appendChild(cards); sec.appendChild(container);
     document.getElementById('goAlquiler').addEventListener('click', ()=>navigateTo('alquiler'));
     document.getElementById('goRepuestos').addEventListener('click', ()=>navigateTo('repuestos-list'));
     document.getElementById('goMantenimiento').addEventListener('click', ()=>navigateTo('mantenimiento-list'));
@@ -232,7 +265,7 @@ function renderRepuestosPage(){
 
   grid.querySelectorAll('.buy-now').forEach(b=> b.addEventListener('click', (e)=>{
     const name = e.currentTarget.dataset.name; const list = getRepuestos(); const item = list.find(x=>x.nombre===name); if(!item) return;
-    const node = document.createElement('div'); node.innerHTML = `<h3>Comprar ahora: ${escapeHtml(item.nombre)}</h3><div style="margin-top:8px">Precio unitario: $${(item.precio||0).toFixed(2)}</div><div style="margin-top:8px"><label>Cantidad</label><input id="buy-qty" type="number" value="1" min="1" style="width:80px;padding:8px;border-radius:6px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.08)"></div><div style="margin-top:12px" class="form-actions"><button id="buy-confirm" class="btn-primary">Pagar ahora</button><button id="buy-cancel" class="btn-secondary">Cancelar</button></div>`;
+    const node = document.createElement('div'); node.innerHTML = `<h3>Comprar ahora: ${escapeHtml(item.nombre)}</h3><div style="margin-top:8px">Precio unitario: $${(item.precio||0).toFixed(2)}</div><div style="margin-top:8px"><label>Cantidad</label><input id="buy-qty" type="number" value="1" min="1" style="width:80px;padding:8px;border-radius:6px;background:#fff;color:#111;border:1px solid rgba(0,0,0,0.08)"></div><div style="margin-top:12px" class="form-actions"><button id="buy-confirm" class="btn-primary">Pagar ahora</button><button id="buy-cancel" class="btn-secondary">Cancelar</button></div>`;
     openModal(node);
     document.getElementById('buy-cancel').addEventListener('click', closeModal);
     document.getElementById('buy-confirm').addEventListener('click', ()=>{ const q = parseInt(document.getElementById('buy-qty').value||1,10); const singleCart = [{name:item.nombre, price:item.precio||0, img:item.img, qty:q}]; closeModal(); openCheckoutModal(singleCart, true); });
@@ -249,7 +282,8 @@ function renderMantenimientoPage(){
   const services = getServices();
   services.forEach((s,i)=>{
     const card = document.createElement('article'); card.className='card';
-    card.innerHTML = `<img src="../images/mantenimiento.jpg"><h3>${escapeHtml(s.title)}</h3><p>${escapeHtml(s.desc)}</p><div style="padding:12px;display:flex;gap:8px;justify-content:space-between;align-items:center"><div style="font-weight:700">$${(s.price||0).toFixed(2)}</div><div><button class="solicitar-cita btn-primary" data-s="${i}">Solicitar cita</button></div></div>`;
+    const imgSrc = s.img || '../images/mantenimientos/revision-frenos.jpg';
+    card.innerHTML = `<img src="${imgSrc}" alt="${escapeHtml(s.title)}"><h3>${escapeHtml(s.title)}</h3><p>${escapeHtml(s.desc)}</p><div style="padding:12px;display:flex;gap:8px;justify-content:space-between;align-items:center"><div style="font-weight:700">$${(s.price||0).toFixed(2)}</div><div><button class="solicitar-cita btn-primary" data-s="${i}">Solicitar cita</button></div></div>`;
     grid.appendChild(card);
   });
   sec.appendChild(grid);
@@ -355,14 +389,45 @@ function setupSearchAndCart(){
   // search
   const input = document.getElementById('siteSearch');
   if(input){
+    // build a lightweight global index from services and repuestos so the search finds across sections
+    const suggestions = document.createElement('div'); suggestions.id = 'searchSuggestions'; suggestions.className='search-suggestions hidden'; document.querySelector('.search-box').appendChild(suggestions);
+    let globalIndex = [];
+    function buildIndex(){
+      globalIndex = [];
+      try{
+        const services = getServices();
+        services.forEach((s,i)=> globalIndex.push({type:'servicio', title:s.title, desc:s.desc, section:'mantenimiento-list', idx:i, img: s.img || '../images/mantenimientos/revision-frenos.jpg'}));
+      }catch(e){}
+      try{
+        const rep = getRepuestos();
+        rep.forEach((r,i)=> globalIndex.push({type:'repuesto', title:r.nombre, desc:r.descripcion, section:'repuestos-list', idx:i, img:r.img || '../images/repuestos.jpg'}));
+      }catch(e){}
+    }
+    buildIndex();
+
     input.addEventListener('input', ()=>{
       const q = input.value.trim().toLowerCase();
+      // first, filter visible cards on current page as before
       document.querySelectorAll('.card').forEach(card=>{
         const title = (card.querySelector('h3')?.textContent||'').toLowerCase();
         const desc = (card.querySelector('p')?.textContent||'').toLowerCase();
         const show = !q || title.includes(q) || desc.includes(q);
         card.style.display = show ? '' : 'none';
       });
+
+      // then, show cross-page suggestions
+      suggestions.innerHTML = '';
+      if(!q){ suggestions.classList.add('hidden'); return; }
+      const matches = globalIndex.filter(item => (item.title||'').toLowerCase().includes(q) || (item.desc||'').toLowerCase().includes(q));
+      if(matches.length === 0){ suggestions.classList.add('hidden'); return; }
+      matches.slice(0,8).forEach(m=>{
+        const row = document.createElement('a'); row.href='#'; row.className='suggestion-item'; row.innerHTML = `<img src="${m.img}" alt="" style="width:40px;height:28px;object-fit:cover;margin-right:8px;border-radius:4px"> <div style="flex:1"><div style="font-weight:700">${escapeHtml(m.title)}</div><div style="font-size:12px;opacity:0.8">${escapeHtml(m.type)}</div></div>`;
+        row.addEventListener('click', (ev)=>{ ev.preventDefault(); suggestions.classList.add('hidden'); navigateTo(m.section); setTimeout(()=>{ // try to highlight the matching card
+          document.querySelectorAll('#'+m.section+' .card').forEach((c,idx)=>{ if(m.type==='repuesto' && idx===m.idx) c.style.boxShadow='0 8px 30px rgba(255,107,0,0.18)'; if(m.type==='servicio' && idx===m.idx) c.style.boxShadow='0 8px 30px rgba(30,144,255,0.12)'; });
+        },200); });
+        suggestions.appendChild(row);
+      });
+      suggestions.classList.remove('hidden');
     });
   }
 
@@ -429,7 +494,7 @@ document.addEventListener('click', (e)=>{
   }
   // 'Comprar ahora' buttons on repuestos list
   if(e.target && e.target.classList && e.target.classList.contains('buy-now')){
-    const idx = parseInt(e.target.dataset.i,10); const r = getRepuestos()[idx]; const singleCart = [{name:r.nombre, price:r.precio||0, img:r.img, qty:1}];
+    const name = e.target.dataset.name; const r = getRepuestos().find(x=>x.nombre===name); if(!r) return; const singleCart = [{name:r.nombre, price:r.precio||0, img:r.img, qty:1}];
     openCheckoutModal(singleCart, true);
   }
 });
@@ -448,12 +513,20 @@ function openCheckoutModal(cart, singleItem=false){
   document.getElementById('pay-cancel').addEventListener('click', closeModal);
   document.getElementById('checkoutForm').addEventListener('submit', (ev)=>{
     ev.preventDefault();
+    // capture buyer name and simulate payment
+    const buyer = (document.getElementById('pay-name')?.value || '').trim() || 'Cliente (demo)';
     showToast('Pago procesado (simulado)');
     closeModal();
-    // if singleItem is true, generate invoice for that item; else for entire cart
-    (async ()=>{ await generateInvoicePDF(cart);
+    (async ()=>{
+      // generate PDF for user (optional)
+      await generateInvoicePDF(cart);
+      // normalize items
+      const normalized = (cart||[]).map(i=>({name:i.name, price: Number(i.price||0), qty: Number(i.qty||1), img: i.img || '../images/repuestos.jpg'}));
+      const total = normalized.reduce((s,it)=> s + (it.price||0)*(it.qty||1), 0);
+      const invoiceRecord = {id: Date.now(), date: new Date().toISOString(), buyer, items: normalized, total};
+      saveInvoice(invoiceRecord); savePurchase(invoiceRecord);
       if(!singleItem){ saveCart([]); renderCartCount(); renderCartPanel(); }
-      navigateTo('facturas'); setTimeout(()=> renderFacturas(true),120);
+      navigateTo('facturas'); setTimeout(()=> renderFacturas(true, invoiceRecord),120);
     })();
   });
 }
@@ -467,9 +540,16 @@ function renderFacturas(){
   const title = document.createElement('h2'); title.textContent = 'Facturas'; section.appendChild(title);
 
   if(createFromCart){
-    const cart = cartArg || getCart();
-    const invoice = buildInvoiceDocument(cart);
-    section.appendChild(invoice);
+    const invoiceRec = cartArg || getCart();
+    // if we were passed an invoice record, render it directly
+    if(invoiceRec && invoiceRec.items){
+      const invoice = buildInvoiceDocument(invoiceRec.items, invoiceRec);
+      section.appendChild(invoice);
+    } else {
+      const cart = cartArg || getCart();
+      const invoice = buildInvoiceDocument(cart);
+      section.appendChild(invoice);
+    }
     // buttons
     const btnRow = document.createElement('div'); btnRow.style.marginTop='12px';
     const dl = document.createElement('button'); dl.textContent='Descargar factura (HTML)'; dl.className='btn-primary'; dl.addEventListener('click', ()=>{ downloadInvoiceHTML(invoice.innerHTML); });
@@ -480,24 +560,31 @@ function renderFacturas(){
     btnRow.appendChild(pdfBtn);
     section.appendChild(btnRow);
     // save invoice and purchase history
-    const invoiceRecord = {id:Date.now(), date:new Date().toISOString(), items: cart, total: cart.reduce((s,i)=>s+(i.price||0)*(i.qty||1),0)};
-    saveInvoice(invoiceRecord); savePurchase(invoiceRecord);
+    // (now handled earlier in checkout flow)
     // if we invoiced the global cart, clear it
     if(!cartArg){ saveCart([]); renderCartCount(); renderCartPanel(); }
     showToast('Compra realizada. Factura generada.');
     return;
   }
 
-  const ul = document.createElement('ul');
   const invoices = getInvoices();
+  const clearBtn = document.createElement('button'); clearBtn.className='btn-secondary'; clearBtn.style.marginLeft='12px'; clearBtn.textContent = '➖ Limpiar historial';
+  clearBtn.addEventListener('click', ()=>{
+    if(!confirm('¿Borrar todo el historial de facturas? Esta acción no se puede deshacer.')) return;
+    localStorage.removeItem('invoicesDemo');
+    showToast('Historial de facturas limpiado');
+    renderFacturas();
+  });
+  section.appendChild(clearBtn);
+
   if(invoices.length === 0){
     const p = document.createElement('p'); p.textContent = 'No hay facturas disponibles.'; section.appendChild(p);
   } else {
     invoices.forEach(inv=>{
-      const li = document.createElement('li'); li.style.padding='8px 0'; li.innerHTML = `<strong>Factura #${inv.id}</strong> — ${new Date(inv.date).toLocaleString()} — Total: $${inv.total.toFixed(2)}`;
-      ul.appendChild(li);
+      const node = buildInvoiceDocument(inv.items || inv, inv);
+      const wrapper = document.createElement('div'); wrapper.style.marginBottom='18px'; wrapper.appendChild(node);
+      section.appendChild(wrapper);
     });
-    section.appendChild(ul);
   }
 }
 
@@ -508,18 +595,32 @@ function saveInvoice(inv){ const list = getInvoices(); list.unshift(inv); localS
 function getPurchases(){ try{ return JSON.parse(localStorage.getItem('purchasesDemo')||'[]'); }catch(e){ return []; } }
 function savePurchase(rec){ const list = getPurchases(); list.unshift(rec); localStorage.setItem('purchasesDemo', JSON.stringify(list)); }
 
-function buildInvoiceDocument(cartItems){
+function buildInvoiceDocument(cartItemsOrRecord, maybeRecord){
+  // support being passed either an invoice record {buyer, items, id, date, total}
+  let record = null;
+  if(Array.isArray(cartItemsOrRecord)) record = {items: cartItemsOrRecord, buyer: (maybeRecord && maybeRecord.buyer) || 'Cliente (demo)', id: Date.now(), date: new Date().toISOString()};
+  else record = cartItemsOrRecord || {items: [], buyer: 'Cliente (demo)', id: Date.now(), date: new Date().toISOString()};
+
+  const items = record.items || [];
   const container = document.createElement('div'); container.className='invoice';
-  const header = document.createElement('header'); header.innerHTML = `<div><h1>Taller Toreto</h1><div>Factura</div></div><div><strong>Fecha:</strong> ${new Date().toLocaleString()}</div>`;
+  const header = document.createElement('header'); header.innerHTML = `<div><div style="display:flex;align-items:center;gap:12px"><img src="../images/logo.webp" style="width:90px;height:auto"> <div><h1 style="margin:0">Taller Toreto</h1><div style="font-size:13px">Factura</div></div></div></div><div style="text-align:right"><strong>#{${record.id}}</strong><div style="font-size:13px">${new Date(record.date).toLocaleString()}</div></div>`;
   container.appendChild(header);
-  const billTo = document.createElement('div'); billTo.className='bill-to'; billTo.innerHTML = `<strong>Cliente:</strong> Usuario (demo)`; container.appendChild(billTo);
+  const billTo = document.createElement('div'); billTo.className='bill-to'; billTo.innerHTML = `<strong>Cliente:</strong> ${escapeHtml(record.buyer || 'Cliente (demo)')}`; container.appendChild(billTo);
 
   const table = document.createElement('table');
-  table.innerHTML = `<thead><tr><th>Item</th><th>Precio</th><th>Cant</th><th>Subtotal</th></tr></thead>`;
+  // Header columns as requested: #deFactura, nombre, cantidad, precio unitario, precio total
+  table.innerHTML = `<thead><tr><th style="width:80px">#Factura</th><th>Nombre</th><th>Cantidad</th><th>Precio unitario</th><th>Precio total</th></tr></thead>`;
   const tbody = document.createElement('tbody'); let total=0;
-  cartItems.forEach(it=>{ const sub = (it.price||0)*(it.qty||1); total+=sub; const tr = document.createElement('tr'); tr.innerHTML = `<td>${escapeHtml(it.name)}</td><td>$${(it.price||0).toFixed(2)}</td><td>${it.qty||1}</td><td>$${sub.toFixed(2)}</td>`; tbody.appendChild(tr); });
+  items.forEach(it=>{
+    const price = Number(it.price||0); const qty = Number(it.qty||1); const sub = price*qty; total+=sub;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${escapeHtml(String(record.id))}</td><td>${escapeHtml(it.name||'')}</td><td>${qty}</td><td>$${price.toFixed(2)}</td><td>$${sub.toFixed(2)}</td>`;
+    tbody.appendChild(tr);
+  });
   table.appendChild(tbody); container.appendChild(table);
-  const totalDiv = document.createElement('div'); totalDiv.className='total'; totalDiv.textContent = `Total: $${total.toFixed(2)}`; container.appendChild(totalDiv);
+  // final total row
+  const foot = document.createElement('div'); foot.style.display='flex'; foot.style.justifyContent='flex-end'; foot.style.marginTop='12px'; foot.innerHTML = `<div style="font-weight:800;font-size:18px">Total a pagar: $${total.toFixed(2)}</div>`;
+  container.appendChild(foot);
   return container;
 }
 
@@ -599,6 +700,14 @@ async function generateInvoicePDF(cart){
 function renderCompras(){
   const section = document.getElementById('compras'); section.innerHTML = '';
   const title = document.createElement('h2'); title.textContent = 'Historial de compras'; section.appendChild(title);
+  const clearP = document.createElement('button'); clearP.className='btn-secondary'; clearP.style.marginLeft='12px'; clearP.textContent = '➖ Limpiar historial';
+  clearP.addEventListener('click', ()=>{
+    if(!confirm('¿Borrar todo el historial de compras?')) return;
+    localStorage.removeItem('purchasesDemo');
+    showToast('Historial de compras limpiado');
+    renderCompras();
+  });
+  section.appendChild(clearP);
   const purchases = getPurchases();
   if(purchases.length === 0){ const p = document.createElement('p'); p.textContent = 'No tienes compras aún.'; section.appendChild(p); return; }
   const grid = document.createElement('div'); grid.style.display='grid'; grid.style.gridTemplateColumns='repeat(auto-fit,minmax(280px,1fr))'; grid.style.gap='12px';
@@ -606,8 +715,17 @@ function renderCompras(){
     const card = document.createElement('div'); card.style.background='rgba(255,255,255,0.03)'; card.style.padding='12px'; card.style.borderRadius='10px';
     const h = document.createElement('h4'); h.textContent = `Compra #${rec.id}`;
     const date = document.createElement('div'); date.style.opacity = 0.9; date.textContent = new Date(rec.date).toLocaleString();
-    const total = document.createElement('div'); total.style.fontWeight = '700'; total.textContent = `Total: $${rec.total.toFixed(2)}`;
-    const list = document.createElement('div'); rec.items.forEach(it=>{ const itEl = document.createElement('div'); itEl.style.display='flex'; itEl.style.gap='8px'; itEl.style.alignItems='center'; itEl.style.marginTop='6px'; const img = document.createElement('img'); img.src = it.img || '../images/repuestos.jpg'; img.style.width='64px'; img.style.height='44px'; img.style.objectFit='cover'; img.style.borderRadius='6px'; const meta = document.createElement('div'); meta.innerHTML = `<div style="font-weight:700">${it.name}</div><div style="opacity:0.9">$${(it.price||0).toFixed(2)} x ${it.qty||1}</div>`; itEl.appendChild(img); itEl.appendChild(meta); list.appendChild(itEl); });
+    const total = document.createElement('div'); total.style.fontWeight = '700'; total.textContent = `Total: $${(rec.total||0).toFixed(2)}`;
+    const list = document.createElement('div');
+    const items = Array.isArray(rec.items) ? rec.items : (rec.cart || []);
+    items.forEach(it=>{
+      const itEl = document.createElement('div'); itEl.style.display='flex'; itEl.style.gap='8px'; itEl.style.alignItems='center'; itEl.style.marginTop='6px';
+      const img = document.createElement('img'); img.src = it.img || '../images/repuestos.jpg'; img.style.width='64px'; img.style.height='44px'; img.style.objectFit='cover'; img.style.borderRadius='6px';
+      const meta = document.createElement('div');
+      const qty = Number(it.qty||1); const price = Number(it.price||0); const sub = (price*qty).toFixed(2);
+      meta.innerHTML = `<div style="font-weight:700">${escapeHtml(it.name||'Item')}</div><div style="opacity:0.9">Unit: $${price.toFixed(2)} &nbsp; x &nbsp; ${qty} = <strong>$${sub}</strong></div>`;
+      itEl.appendChild(img); itEl.appendChild(meta); list.appendChild(itEl);
+    });
     card.appendChild(h); card.appendChild(date); card.appendChild(total); card.appendChild(list); grid.appendChild(card);
   });
   section.appendChild(grid);
@@ -678,14 +796,49 @@ function renderAdmin(){
 /* Admin storage helpers */
 function getRepuestos(){
   const raw = localStorage.getItem('repuestosDemo');
-  if(raw) return JSON.parse(raw);
-  // create a concise demo set: 10 car parts, 10 moto parts
+  // file mapping (title -> filename in images/repuestos)
+  const imgMap = {
+    'Amortiguador':'amortiguadores.webp',
+    'Filtro de aceite':'filtro aceite.jpg',
+    'Bujía':'bujia.webp',
+    'Batería':'bateria.webp',
+    'Alternador':'alternador.jpg',
+    'Radiador':'radiador.webp',
+    'Correa de distribución':'correa.jpg',
+    'Pastillas de freno':'Pastillas-de-freno.jpg',
+    'Disco de freno':'disco freno.jpg',
+    'Sensor de oxígeno':'sensor-oxigeno.png',
+    'Neumático moto':'neumatico.webp',
+    'Cadena de transmisión':'cadena.webp',
+    'Piñón':'piñon.webp',
+    'Kit arrastre':'kit-arrastre.webp',
+    'Pastillas freno moto':'Pastillas-de-freno.jpg',
+    'Filtro aire moto':'filtro-aire.webp',
+    'Bujía moto':'bujia.webp',
+    'Manillar':'manillar.jpg',
+    'Escape moto':'escape.webp'
+  };
+  if(raw){
+    try{
+      const arr = JSON.parse(raw);
+      let changed = false;
+      arr.forEach(it=>{
+        if(!it.img || it.img === '../images/repuestos.jpg' || it.img.endsWith('repuestos.jpg')){
+          const candidate = imgMap[it.nombre] || null;
+          if(candidate){ it.img = `../images/repuestos/${candidate}`; changed = true; }
+        }
+      });
+      if(changed) localStorage.setItem('repuestosDemo', JSON.stringify(arr));
+      return arr;
+    }catch(e){ console.warn('repuestos parse error', e); }
+  }
+  // create a concise demo set and map to actual uploaded images by filename
   const brands = ['Bosch','Valeo','Brembo','Denso','NGK','K&N','Motul','Castrol','Mahle','SKF'];
   const car = ['Amortiguador','Filtro de aceite','Bujía','Batería','Alternador','Radiador','Correa de distribución','Pastillas de freno','Disco de freno','Sensor de oxígeno'];
   const moto = ['Neumático moto','Cadena de transmisión','Piñón','Kit arrastre','Pastillas freno moto','Filtro aire moto','Bujía moto','Amortiguador moto','Manillar','Escape moto'];
   const parts = [];
-  car.forEach((name,i)=> parts.push({nombre:name, precio: Math.round(30 + i*5), descripcion:`Repuesto para auto: ${name}`, img:'../images/repuestos.jpg', brand: brands[i%brands.length], type:'car'}));
-  moto.forEach((name,i)=> parts.push({nombre:name, precio: Math.round(25 + i*4), descripcion:`Repuesto para moto: ${name}`, img:'../images/repuestos.jpg', brand: brands[(i+3)%brands.length], type:'moto'}));
+  car.forEach((name,i)=> parts.push({nombre:name, precio: Math.round(30 + i*5), descripcion:`Repuesto para auto: ${name}`, img:`../images/repuestos/${imgMap[name]||'repuestos.jpg'}`, brand: brands[i%brands.length], type:'car'}));
+  moto.forEach((name,i)=> parts.push({nombre:name, precio: Math.round(25 + i*4), descripcion:`Repuesto para moto: ${name}`, img:`../images/repuestos/${imgMap[name]||'repuestos.jpg'}`, brand: brands[(i+3)%brands.length], type:'moto'}));
   localStorage.setItem('repuestosDemo', JSON.stringify(parts));
   return parts;
 }
@@ -694,7 +847,20 @@ function getServices(){
   const raw = localStorage.getItem('servicesDemo'); if(raw) return JSON.parse(raw);
   const services = [];
   const list = ['Cambio de aceite','Alineación','Balanceo','Revisión general','Cambio de pastillas de freno','Cambio de discos','Lavado y detallado','Revisión de suspensión','Diagnóstico electrónico','Revisión de frenos'];
-  list.forEach((s,i)=> services.push({title:s, desc:`Servicio de ${s}`, price: Math.round(25 + i*5)}));
+  // map service titles to images in images/servicios (you stored 3 service images there)
+  const svcImg = {
+    'Cambio de aceite':'mantenimiento.jpg',
+    'Alineación':'mecanico.jpg',
+    'Balanceo':'mantenimiento.jpg',
+    'Revisión general':'mantenimiento.jpg',
+    'Cambio de pastillas de freno':'mantenimiento.jpg',
+    'Cambio de discos':'mantenimiento.jpg',
+    'Lavado y detallado':'mantenimiento.jpg',
+    'Revisión de suspensión':'mantenimiento.jpg',
+    'Diagnóstico electrónico':'mecanico.jpg',
+    'Revisión de frenos':'mantenimiento.jpg'
+  };
+  list.forEach((s,i)=> services.push({title:s, desc:`Servicio de ${s}`, price: Math.round(25 + i*5), img:`../images/servicios/${svcImg[s]||'mantenimiento.jpg'}`}));
   localStorage.setItem('servicesDemo', JSON.stringify(services));
   return services;
 }
