@@ -79,8 +79,8 @@ document.addEventListener('DOMContentLoaded', function(){
 			setTimeout(()=>{
 				console.log('registro_simulado:', {nombre,email,telefono,direccion});
 				if(regMsg) regMsg.textContent = 'Registro exitoso (simulado). Redirigiendo...';
-				// redirect to home as cliente
-				location.href = 'Html/home.html?role=cliente';
+				// redirect to dashboard as cliente (restore client pages)
+				location.href = 'Html/dashboard.html?role=cliente';
 			},700);
 		});
 	}
@@ -97,9 +97,12 @@ document.addEventListener('DOMContentLoaded', function(){
 			console.log('login:', {username, role});
 			// save role for dashboard and redirect appropriately
 			try{ localStorage.setItem('demoRole', role); }catch(e){ console.warn('localStorage unavailable', e); }
-			if(role === 'provedor'){
-				location.href = `Html/provider.html?role=${encodeURIComponent(role)}`;
+			if(role === 'mecanico'){
+				location.href = `Html/mecanico_dashboard.html?role=${encodeURIComponent(role)}`;
+			} else if(role === 'proveedor' || role === 'provedor'){
+				location.href = `Html/proveedor_panel.html?role=${encodeURIComponent(role)}`;
 			} else {
+				// clientes y administradores van al dashboard principal
 				location.href = `Html/dashboard.html?role=${encodeURIComponent(role)}`;
 			}
 		}, 700);

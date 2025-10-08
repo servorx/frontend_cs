@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+</title>
+<link rel="stylesheet" href="../Css/login.css">
+</head>
+<body>
+  <video id="bgVideo" class="bg-video" autoplay muted loop playsinline>
+    <source src="../images/fondo%20proyecto.mp4" type="video/mp4">
+    Tu navegador no soporta el elemento de video.
+  </video>
+  <header class="topbar"><div class="brand"><img src="../images/logo.webp" class="logo"><span class="brand-name">TallerX</span></div>
+    <div class="center-link"><a class="home-link" href="mecanico_dashboard.html">Inicio</a></div>
+    <div>
+      <span id="sessionBadge" class="session-badge" style="display:none"></span>
+    </div>
+    <div class="user-area hamburger-menu">
+      <a href="#" class="user-btn" id="userBtn">☰</a>
+      <div class="menu" id="userMenu">
+        <a href="../index.html" id="logout">Cerrar sesión</a>
+      </div>
+    </div>
+  </header>
+  <main>
+    <section class="section" style="padding-top:40px">
+      <h2>Panel</h2>
+        <div class="dashboard-cards" style="padding-top:18px">
+        <article class="card login-card">
+          <a class="card-link" href="vehiculos.html">
+            <img src="../images/mantenimiento.jpg" alt="Vehículos pendientes">
+            <h3>Vehículos pendientes</h3>
+            <p class="card-login-p">Ver y marcar como reparado</p>
+          </a>
+        </article>
+        <article class="card login-card">
+          <a class="card-link" href="vehiculos-terminados.html">
+            <img src="../images/mantenimiento.jpg" alt="Vehículos terminados">
+            <h3>Vehículos terminados</h3>
+            <p class="card-login-p">Listado de vehículos reparados</p>
+          </a>
+        </article>
+        <article class="card login-card">
+          <a class="card-link" href="vehiculos-entregados.html">
+            <img src="../images/mantenimiento.jpg" alt="Vehículos entregados">
+            <h3>Vehículos entregados</h3>
+            <p class="card-login-p">Historial y detalles de entrega</p>
+          </a>
+        </article>
+        <article class="card login-card">
+          <a class="card-link" href="agenda.html">
+            <img src="../images/mecanico.jpg" alt="Agenda">
+            <h3>Agenda de trabajo</h3>
+            <p class="card-login-p">Ver asignaciones y domicilios</p>
+          </a>
+        </article>
+        <article class="card login-card">
+          <a class="card-link" href="consultar-proveedor.html">
+            <img src="../images/repuestos.jpg" alt="Proveedor">
+            <h3>Consultar proveedor</h3>
+            <p class="card-login-p">Pedir repuestos desde aquí</p>
+          </a>
+        </article>
+      </div>
+      </section>
+    </main>
+    <script>
+      // hamburger toggle for dashboard
+      document.addEventListener('DOMContentLoaded', ()=>{
+        const userBtn = document.getElementById('userBtn');
+        const userMenu = document.getElementById('userMenu');
+        if(userBtn) userBtn.addEventListener('click',(e)=>{ e.preventDefault(); userMenu.classList.toggle('show'); });
+        // session badge
+        const badge = document.getElementById('sessionBadge');
+        const logout = document.getElementById('logout');
+        const user = JSON.parse(localStorage.getItem('user') || 'null');
+        const role = localStorage.getItem('demoRole');
+      if(badge){ if(user){ badge.textContent = user.name || 'Usuario'; badge.style.display='inline-block'; } else { badge.style.display='none'; } }
+        if(logout) logout.addEventListener('click', ()=>{ localStorage.removeItem('demoRole'); localStorage.removeItem('user'); });
+      });
+    </script>
+    </section>
+  </main>
+</body>
+</html>

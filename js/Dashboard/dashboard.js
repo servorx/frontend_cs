@@ -52,11 +52,14 @@ function setupGlobalHandlers(){
 function renderRoleMenu(){
   const menu = document.getElementById('userMenu');
   menu.innerHTML = '';
-  const roleTitle = document.createElement('div');
-  roleTitle.style.padding = '6px 8px';
-  roleTitle.style.opacity = '0.9';
-  roleTitle.textContent = `Rol: ${currentRole}`;
-  menu.appendChild(roleTitle);
+  // don't show the raw role label 'mecanico' in the user menu to keep headers clean
+  if(currentRole && currentRole !== 'mecanico'){
+    const roleTitle = document.createElement('div');
+    roleTitle.style.padding = '6px 8px';
+    roleTitle.style.opacity = '0.9';
+    roleTitle.textContent = `Rol: ${currentRole}`;
+    menu.appendChild(roleTitle);
+  }
 
   const items = getMenuItemsForRole(currentRole);
   items.forEach(it => {
