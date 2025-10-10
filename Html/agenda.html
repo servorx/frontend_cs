@@ -21,6 +21,10 @@
   </header>
   <main>
     <section class="section" style="padding-top:40px">
+      <div id="taskBanner" style="max-width:900px;margin:12px auto;display:none;padding:10px;border-radius:6px;background:linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));;align-items:center;justify-content:space-between;">
+        <div id="taskBannerText" style="font-weight:700;color:var(--accent)"></div>
+        <div style="display:flex;gap:8px"><button id="taskListBtn" class="btn">Ver solicitudes</button><button id="taskMarkAllRead" class="btn-secondary">Marcar todas leídas</button></div>
+      </div>
       <div style="max-width:900px;margin:0 auto;background:rgba(255,255,255,0.03);padding:12px;border-radius:8px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <button id="prevMonth" class="btn secondary">◀</button>
@@ -65,6 +69,47 @@
     function loadEvents(){ return JSON.parse(localStorage.getItem('agenda_events')||'[]'); }
     function saveEvents(arr){ localStorage.setItem('agenda_events', JSON.stringify(arr)); }
 
+    // employee calendar integration: if ?user=username present, load assigned tasks from empleadosDemo[username].calendar
+    function loadEmployeeCalendar(){
+      const params = new URLSearchParams(window.location.search);
+      const userParam = params.get('user');
+      if(!userParam) return [];
+      const emps = JSON.parse(localStorage.getItem('empleadosDemo')||'[]');
+      const emp = emps.find(e=> e.username === userParam || e.nombre === userParam);
+      if(!emp || !emp.calendar) return [];
+      // map employee calendar entries into agenda events shape
+      return emp.calendar.map(c=>{
+        const s = c.solicitud || c;
+        return { id: c.id || ('emp_'+Date.now()), date: s.fecha || s.date || new Date().toISOString().split('T')[0], time: s.hora || s.time || '', mechanic: emp.nombre, client: s.nombre || s.buyer || '', desc: JSON.stringify(s) };
+      });
+    }
+
+    function saveEmployeeCalendar(events){
+      const params = new URLSearchParams(window.location.search);
+      const userParam = params.get('user');
+      if(!userParam) return;
+      const emps = JSON.parse(localStorage.getItem('empleadosDemo')||'[]');
+      const idx = emps.findIndex(e=> e.username === userParam || e.nombre === userParam);
+      if(idx === -1) return;
+      emps[idx].calendar = (emps[idx].calendar||[]).concat(events.map(ev=>({ id: ev.id, solicitud: { date: ev.date, time: ev.time, client: ev.client, desc: ev.desc } })));
+      localStorage.setItem('empleadosDemo', JSON.stringify(emps));
+    }
+
+    // upsert a single event into the logged-in employee's calendar (replace by id or append)
+    function upsertEmployeeEvent(ev){
+      const params = new URLSearchParams(window.location.search);
+      const userParam = params.get('user');
+      if(!userParam || !ev) return;
+      const emps = JSON.parse(localStorage.getItem('empleadosDemo')||'[]');
+      const idx = emps.findIndex(e=> e.username === userParam || e.nombre === userParam);
+      if(idx === -1) return;
+      emps[idx].calendar = emps[idx].calendar || [];
+      const calIdx = emps[idx].calendar.findIndex(c=> c.id === ev.id);
+      const stored = { id: ev.id, solicitud: { fecha: ev.date, hora: ev.time, nombre: ev.client, desc: ev.desc, mechanic: ev.mechanic } };
+      if(calIdx > -1) emps[idx].calendar[calIdx] = stored; else emps[idx].calendar.push(stored);
+      localStorage.setItem('empleadosDemo', JSON.stringify(emps));
+    }
+
     function render(){
       const year = view.getFullYear(); const month = view.getMonth();
       label.textContent = view.toLocaleString('es-ES',{month:'long',year:'numeric'});
@@ -73,7 +118,10 @@
     const grid = document.createElement('div'); grid.className='calendar-grid';
     ['Dom','Lun','Mar','Mie','Jue','Vie','Sab'].forEach(d=>{ const h=document.createElement('div'); h.className='weekday'; h.textContent=d; grid.appendChild(h); });
       for(let i=0;i<first;i++) grid.appendChild(document.createElement('div'));
-      const events = loadEvents();
+  const events = loadEvents();
+  // merge employee-assigned events (do not duplicate)
+  const empEvents = loadEmployeeCalendar();
+  empEvents.forEach(ev=>{ if(!events.find(e=> e.id === ev.id)) events.push(ev); });
       for(let d=1;d<=daysInMonth;d++){
     const cell = document.createElement('div'); cell.className='day-cell';
     const title = document.createElement('div'); title.className='day-number'; title.textContent = d; cell.appendChild(title);
@@ -99,9 +147,13 @@
 
     saveBtn.addEventListener('click', ()=>{
       const events = loadEvents();
-      if(editingId){ const idx = events.findIndex(x=>x.id===editingId); if(idx>-1){ events[idx].date = evDate.value; events[idx].time = evTime.value; events[idx].mechanic = evMechanic.value; events[idx].client = evClient.value; events[idx].desc = evDesc.value; events[idx].updatedAt = new Date().toISOString(); } }
-      else { events.push({ id: 'ev_'+Date.now(), date: evDate.value, time: evTime.value, mechanic: evMechanic.value, client: evClient.value, desc: evDesc.value, createdAt: new Date().toISOString() }); }
-      saveEvents(events); closeModal(); render();
+      let savedEv = null;
+      if(editingId){ const idx = events.findIndex(x=>x.id===editingId); if(idx>-1){ events[idx].date = evDate.value; events[idx].time = evTime.value; events[idx].mechanic = evMechanic.value; events[idx].client = evClient.value; events[idx].desc = evDesc.value; events[idx].updatedAt = new Date().toISOString(); savedEv = events[idx]; } }
+      else { savedEv = { id: 'ev_'+Date.now(), date: evDate.value, time: evTime.value, mechanic: evMechanic.value, client: evClient.value, desc: evDesc.value, createdAt: new Date().toISOString() }; events.push(savedEv); }
+      saveEvents(events);
+      // also sync this event into the employee's calendar if viewing as a mechanic (?user=)
+      try{ upsertEmployeeEvent(savedEv); }catch(e){ /* ignore */ }
+      closeModal(); render();
     });
     cancelBtn.addEventListener('click', ()=>{ closeModal(); });
 
@@ -109,6 +161,26 @@
     next.addEventListener('click', ()=>{ view = new Date(view.getFullYear(), view.getMonth()+1, 1); render(); });
 
     render();
+    // task banner on agenda: show unread assignments for logged mechanic
+    (function(){
+      var params = new URLSearchParams(window.location.search); var userParam = params.get('user'); var uname = userParam || (JSON.parse(localStorage.getItem('user')||'null') || {}).name;
+      if(!uname) return;
+      var emps = [];
+      try{ emps = JSON.parse(localStorage.getItem('empleadosDemo')||'[]'); }catch(e){ emps = []; }
+      var emp = emps.find(function(e){ return e.username === uname || e.nombre === uname; });
+      if(!emp || !emp.calendar || !emp.calendar.length) return;
+      var unread = emp.calendar.filter(function(c){ return c.read !== true; });
+      if(!unread.length) return;
+      var banner = document.getElementById('taskBanner'); if(!banner) return;
+      document.getElementById('taskBannerText').textContent = 'Tienes ' + unread.length + ' solicitud(es) sin leer'; banner.style.display = 'flex';
+      document.getElementById('taskListBtn').addEventListener('click', function(){
+        var node = document.createElement('div'); node.innerHTML = '<h3>Solicitudes asignadas</h3><div id="assignList"></div><div style="margin-top:12px"><button id="assign-close" class="btn-secondary">Cerrar</button></div>'; openModal(node); document.getElementById('assign-close').addEventListener('click', closeModal);
+        var listWrap = document.getElementById('assignList'); unread.forEach(function(n,idx){ var el = document.createElement('div'); el.style.padding='8px'; el.style.borderBottom='1px solid #eee'; el.innerHTML = '<div style="font-weight:700">'+ escapeHtml(n.solicitud.servicio||n.solicitud.title||'Solicitud') +'</div><div style="font-size:13px">'+ escapeHtml(n.solicitud.nombre||n.solicitud.buyer||'') +' — '+ escapeHtml(n.solicitud.fecha||n.solicitud.date||'') +'</div><div style="margin-top:6px"><button data-idx="'+idx+'" class="btn-primary view-assigned">Ver</button> <button data-idx="'+idx+'" class="btn-secondary mark-assigned">Marcar leída</button></div>'; listWrap.appendChild(el); });
+        listWrap.querySelectorAll('.view-assigned').forEach(function(b){ b.addEventListener('click', function(ev){ var idx = Number(ev.currentTarget.dataset.idx); var item = unread[idx]; alert(JSON.stringify(item.solicitud,null,2)); }); });
+        listWrap.querySelectorAll('.mark-assigned').forEach(function(b){ b.addEventListener('click', function(ev){ var idx = Number(ev.currentTarget.dataset.idx); var id = unread[idx].id; var all = JSON.parse(localStorage.getItem('empleadosDemo')||'[]'); var eidx = all.findIndex(function(x){ return x.username===emp.username || x.nombre===emp.nombre; }); if(eidx>-1){ all[eidx].calendar = all[eidx].calendar.map(function(c){ return c.id===id ? (c.read=true,c) : c; }); localStorage.setItem('empleadosDemo', JSON.stringify(all)); if(typeof showToast === 'function') showToast('Marcado como leído'); closeModal(); render(); } }); });
+      });
+      document.getElementById('taskMarkAllRead').addEventListener('click', function(){ emp.calendar = emp.calendar.map(function(c){ c.read = true; return c; }); var all = JSON.parse(localStorage.getItem('empleadosDemo')||'[]'); var idx = all.findIndex(function(x){ return x.username===emp.username || x.nombre===emp.nombre; }); if(idx>-1){ all[idx]=emp; localStorage.setItem('empleadosDemo', JSON.stringify(all)); if(typeof showToast === 'function') showToast('Todas las solicitudes marcadas como leídas'); document.getElementById('taskBanner').style.display='none'; render(); } });
+    })();
   });
   </script>
   <script>

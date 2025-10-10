@@ -11,20 +11,40 @@
     <source src="../images/fondo%20proyecto.mp4" type="video/mp4">
     Tu navegador no soporta el elemento de video.
   </video>
-  <header class="topbar"><div class="brand"><img src="../images/logo.webp" class="logo"><span class="brand-name">Taller Toreto</span></div>
-    <div class="center-link"><a class="home-link" href="mecanico_dashboard.html">Inicio</a></div>
-    <div>
-      <span id="sessionBadge" class="session-badge" style="display:none"></span>
+  <header class="topbar">
+  <div class="brand">
+    <img src="../images/logo.webp" class="logo">
+    <span class="brand-name">Taller Toreto</span>
+  </div>
+
+  <div class="center-link">
+    <a class="home-link" href="mecanico_dashboard.html">Inicio</a>
+  </div>
+
+  <div>
+    <span id="sessionBadge" class="session-badge" style="display:none"></span>
+  </div>
+
+  <div class="user-area hamburger-menu">
+    <!-- 🔔 Nueva campana de notificaciones -->
+    <button id="notifBtn" class="notif-btn" title="Notificaciones" 
+            style="background:transparent;border:none;color:#fff;font-size:20px;cursor:pointer;margin-right:10px;">
+      🔔
+    </button>
+
+    <a href="#" class="user-btn" id="userBtn">☰</a>
+    <div class="menu" id="userMenu">
+      <a href="../index.html" id="logout">Cerrar sesión</a>
     </div>
-    <div class="user-area hamburger-menu">
-      <a href="#" class="user-btn" id="userBtn">☰</a>
-      <div class="menu" id="userMenu">
-        <a href="../index.html" id="logout">Cerrar sesión</a>
-      </div>
-    </div>
-  </header>
+  </div>
+</header>
+
   <main>
     <section class="section" style="padding-top:40px">
+      <div id="taskBanner" style="max-width:900px;margin:12px auto 6px auto;display:none;padding:10px;border-radius:6px;background:linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));;align-items:center;justify-content:space-between;">
+        <div id="taskBannerText" style="font-weight:700;color:var(--accent)"></div>
+        <div style="display:flex;gap:8px"><button id="openTasksBtn" class="btn">Ver tareas</button><button id="markReadTasks" class="btn-secondary">Marcar leídas</button></div>
+      </div>
       <h2>Panel</h2>
         <div class="dashboard-cards" style="padding-top:18px">
         <article class="card login-card">
@@ -66,18 +86,49 @@
       </section>
     </main>
     <script>
-      // hamburger toggle for dashboard
-      document.addEventListener('DOMContentLoaded', ()=>{
+      // hamburger toggle and session handling for dashboard
+      document.addEventListener('DOMContentLoaded', function(){
         const userBtn = document.getElementById('userBtn');
         const userMenu = document.getElementById('userMenu');
-        if(userBtn) userBtn.addEventListener('click',(e)=>{ e.preventDefault(); userMenu.classList.toggle('show'); });
-        // session badge
+        if(userBtn) {
+          userBtn.addEventListener('click', function(e){ e.preventDefault(); userMenu.classList.toggle('show'); });
+        }
+
+        // session badge: prefer username from URL param ?user=, then localStorage
         const badge = document.getElementById('sessionBadge');
         const logout = document.getElementById('logout');
-        const user = JSON.parse(localStorage.getItem('user') || 'null');
-        const role = localStorage.getItem('demoRole');
-      if(badge){ if(user){ badge.textContent = user.name || 'Usuario'; badge.style.display='inline-block'; } else { badge.style.display='none'; } }
-        if(logout) logout.addEventListener('click', ()=>{ localStorage.removeItem('demoRole'); localStorage.removeItem('user'); });
+        const params = new URLSearchParams(window.location.search);
+        const userParam = params.get('user');
+        let user = null;
+        try{ user = JSON.parse(localStorage.getItem('user') || 'null'); }catch(e){ user = null; }
+        if(userParam){ user = { name: userParam }; try{ localStorage.setItem('user', JSON.stringify(user)); }catch(e){} }
+        if(badge){ if(user){ badge.textContent = user.name || 'Usuario'; badge.style.display='inline-block'; } else { badge.style.display='none'; } }
+        if(logout) logout.addEventListener('click', function(){ localStorage.removeItem('demoRole'); localStorage.removeItem('user'); window.location.href = '../index.html'; });
+
+        // task banner: check empleadosDemo for assignments for this user
+        (function(){
+          var uname = userParam || (user && user.name);
+          if(!uname) return;
+          var emps = [];
+          try{ emps = JSON.parse(localStorage.getItem('empleadosDemo')||'[]'); }catch(e){ emps = []; }
+          var emp = emps.find(function(e){ return e.username === uname || e.nombre === uname; });
+          if(!emp || !emp.calendar || !emp.calendar.length) return;
+          var unread = emp.calendar.filter(function(c){ return c.read !== true; }).length;
+          if(unread <= 0) return;
+          var banner = document.getElementById('taskBanner');
+          if(!banner) return;
+          document.getElementById('taskBannerText').textContent = 'Tienes ' + unread + ' tarea(s) sin leer';
+          banner.style.display = 'flex';
+          document.getElementById('openTasksBtn').addEventListener('click', function(){ window.location.href = 'agenda.html?user=' + encodeURIComponent(uname); });
+          document.getElementById('markReadTasks').addEventListener('click', function(){
+            emp.calendar = emp.calendar.map(function(c){ c.read = true; return c; });
+            var all = JSON.parse(localStorage.getItem('empleadosDemo')||'[]');
+            var idx = all.findIndex(function(x){ return x.username === emp.username || x.nombre === emp.nombre; });
+            if(idx > -1){ all[idx] = emp; localStorage.setItem('empleadosDemo', JSON.stringify(all)); }
+            banner.style.display = 'none';
+            if(typeof showToast === 'function') showToast('Tareas marcadas como leídas');
+          });
+        })();
       });
     </script>
     </section>

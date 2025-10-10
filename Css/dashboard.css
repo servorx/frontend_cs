@@ -169,6 +169,176 @@ html,body{height:100%;margin:0;font-family:Segoe UI, Roboto, Arial, sans-serif;c
 .veh-list{margin-top:18px}
 .veh-item{display:flex;align-items:center;gap:12px;padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:8px}
 .veh-item img{width:84px;height:56px;object-fit:cover;border-radius:6px}
+/* Ajuste del tamaño de las imágenes de bancos */
+.payments img {
+  width: 70px;
+  height: auto;
+  border-radius: 8px;
+  object-fit: contain;
+  transition: transform 0.2s ease;
+}
+
+.payments img:hover {
+  transform: scale(1.05);
+}
+/* === Corrección visual para selects y sus opciones === */
+select {
+  background: rgba(0, 0, 0, 0.6); /* fondo oscuro visible */
+  color: #fff; /* texto siempre visible */
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 8px;
+  appearance: none;
+}
+
+select option {
+  background: #111; /* fondo sólido dentro del menú desplegable */
+  color: #fff;      /* texto blanco para buena visibilidad */
+}
+
+select option:hover,
+select option:checked {
+  background: var(--accent); /* color de acento al resaltar */
+  color: #000; /* texto negro para contraste */
+}
+
+.redes {
+    display: flex;
+    gap: 15px;
+}
+
+/* Base para todos los íconos */
+.redes a {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 20px;
+    transition: transform 0.4s ease, box-shadow 0.4s ease, background-color 0.4s ease;
+}
+
+/* Colores iniciales */
+.redes a.whatsapp {
+    background-color: #25D366;
+}
+
+.redes a.instagram {
+    background: radial-gradient(circle at 30% 30%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);
+}
+
+.redes a.tiktok {
+    background-color: #010101;
+}
+
+/* Efecto hover: giro + "relleno" */
+.redes a:hover {
+    transform: rotate(360deg) scale(1.1);
+    box-shadow: 0 0 15px rgba(0,0,0,0.3);
+}
+
+/* Extra: que parezca que “se rellena de nuevo” */
+.redes a.whatsapp:hover {
+    background: linear-gradient(135deg, #1ebe5d, #25D366);
+}
+
+.redes a.instagram:hover {
+    background: radial-gradient(circle at 30% 30%, #fdf497 0%, #fdf497 15%, #fd5949 50%, #d6249f 70%, #285AEB 100%);
+}
+
+.redes a.tiktok:hover {
+    background: linear-gradient(135deg, #010101);
+}
+.redes a.facebook {
+    background-color: #1877F2;
+}
+
+.redes a.facebook:hover {
+    background: linear-gradient(135deg, #1461c1, #1877F2);
+}
+/* ==== HOME ==== */
+.home-content {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 0 20px;
+  color: #fff;
+}
+
+.home-content h1 {
+  font-size: 2.4rem;
+  margin-bottom: 10px;
+  text-shadow: 0 0 10px rgba(255,255,255,0.2);
+}
+
+.home-content p {
+  font-size: 1.1rem;
+  margin-bottom: 25px;
+  color: #ddd;
+}
+
+/* ==== CARRUSEL ==== */
+.carousel {
+  position: relative;
+  width: 100%;
+  max-width: 900px;
+  height: 420px;
+  margin: 0 auto 30px;
+  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+}
+
+.carousel img {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: contain; /* muestra imagen completa */
+  opacity: 0;
+  transition: opacity 1s ease;
+  background: rgba(0,0,0,0.3);
+}
+
+.carousel img.active {
+  opacity: 1;
+}
+
+/* ==== BANCOS ==== */
+.payments {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.payments img {
+  width: 80px;
+  height: auto;
+  border-radius: 8px;
+  transition: transform 0.3s ease;
+}
+
+.payments img:hover {
+  transform: scale(1.1);
+}
+
+/* ==== RESPONSIVE ==== */
+@media (max-width: 768px) {
+  .home-content h1 {
+    font-size: 1.8rem;
+    text-align: center;
+  }
+  .home-content p {
+    text-align: center;
+  }
+  .carousel {
+    height: 300px;
+  }
+}
+
 
 @media (max-width:720px){
   .social{width:48%;height:120px}

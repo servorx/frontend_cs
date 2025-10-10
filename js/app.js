@@ -85,24 +85,65 @@ document.addEventListener('DOMContentLoaded', function(){
 		});
 	}
 
-	form.addEventListener('submit', function(e){
+	form.addEventListener('submit', async function(e){
 		e.preventDefault();
 		const formData = new FormData(form);
 		const username = formData.get('username') || '';
-		const role = formData.get('role') || '';
+		const role = (formData.get('role') || '').toString();
 
 		// Simple client-side feedback — integrate real auth later
 		msg.textContent = `Entrando como ${role} — ${username ? username : 'usuario'}`;
-		setTimeout(()=>{
+		setTimeout(async ()=>{
 			console.log('login:', {username, role});
-			// save role for dashboard and redirect appropriately
-			try{ localStorage.setItem('demoRole', role); }catch(e){ console.warn('localStorage unavailable', e); }
-			if(role === 'mecanico'){
-				location.href = `Html/mecanico_dashboard.html?role=${encodeURIComponent(role)}`;
+				if(role === 'mecanico'){
+				// validate mecanico credentials against empleadosDemo (employees have username/password)
+				try{
+					const empleados = JSON.parse(localStorage.getItem('empleadosDemo')||'[]');
+					const found = empleados.find(m=> m.username && m.username === username && m.password && m.password === (formData.get('password')||''));
+					if(found && found.username === username){
+						// set current user for mechanic session
+						try{ localStorage.setItem('user', username); localStorage.setItem('demoRole', 'mecanico'); }catch(e){}
+						location.href = `Html/mecanico_dashboard.html?role=${encodeURIComponent(role)}&user=${encodeURIComponent(username)}`;
+					} else {
+						msg.textContent = 'No estás registrado en la empresa';
+					}
+				}catch(err){ console.error(err); msg.textContent = 'Error validando usuario'; }
 			} else if(role === 'proveedor' || role === 'provedor'){
-				location.href = `Html/proveedor_panel.html?role=${encodeURIComponent(role)}`;
+				// validate proveedor credentials
+				try{
+					const provs = JSON.parse(localStorage.getItem('proveedoresDemo')||'[]');
+					const found = provs.find(p=> (p.username && p.username === username && p.password));
+					if(found && found.username === username){
+						location.href = `Html/proveedor_panel.html?role=${encodeURIComponent(role)}&user=${encodeURIComponent(username)}`;
+					} else {
+						msg.textContent = 'No estás registrado en la empresa';
+					}
+				}catch(err){ console.error(err); msg.textContent = 'Error validando usuario'; }
+			} else if(role === 'admin' || role === 'administrador'){
+				// ADMIN: verify hashed password (client-side demo only). Uses Web Crypto Subtle API.
+				const adminUser = 'administrad0r_tallertoreto1';
+				// SHA-256 of '1003865379' computed locally and embedded (hex)
+				const adminHash = '03d3350fc099ca6a2aae344f7b6d8f2ae066ca0e25055eb1eaa9e22dd6f41be2';
+				const provided = (formData.get('password') || '').toString();
+				try{
+					if(username === adminUser){
+						const enc = new TextEncoder();
+						const data = enc.encode(provided);
+						const digest = await crypto.subtle.digest('SHA-256', data);
+						const hashArray = Array.from(new Uint8Array(digest));
+						const hashHex = hashArray.map(b=>b.toString(16).padStart(2,'0')).join('');
+						if(hashHex === adminHash){
+							try{ localStorage.setItem('demoRole', 'admin'); }catch(e){}
+							location.href = `Html/dashboard_admin.html?role=admin`;
+						} else {
+							msg.textContent = 'Credenciales de administrador inválidas.';
+						}
+					} else {
+						msg.textContent = 'Credenciales de administrador inválidas.';
+					}
+				}catch(err){ console.error('hash err', err); msg.textContent = 'Error validando administrador'; }
 			} else {
-				// clientes y administradores van al dashboard principal
+				// clientes van al dashboard principal
 				location.href = `Html/dashboard.html?role=${encodeURIComponent(role)}`;
 			}
 		}, 700);

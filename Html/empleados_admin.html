@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Gestión de Empleados - Taller Toreto (Admin)</title>
+
+  <link rel="stylesheet" href="../Css/dashboard.css" />
+  <style>
+    /* --- Mantener estilos existentes, añadir namespaced estilos para el modal y correcciones --- */
+    body{margin:0;font-family:Segoe UI, Roboto, Arial, sans-serif;color:#fff;min-height:100vh}
+    .bg-video{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:-1}
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:-1}
+    .topbar{position:fixed;left:0;right:0;top:0;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.35);z-index:10}
+    .brand{display:flex;align-items:center;gap:10px}
+    .logo{width:44px;height:44px;object-fit:cover}
+    main{padding-top:84px;max-width:1200px;margin:0 auto}
+    h1{color:var(--accent,#ff6b00);margin:8px 0}
+    #empleadosContainer{padding:12px}
+
+    /* Grid de tarjetas (sin cambios estéticos principales) */
+    .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+    .card{background:rgba(255,255,255,0.04);padding:12px;border-radius:10px;position:relative;overflow:hidden;min-height:160px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;transition:transform .2s ease}
+    .card:hover{transform:translateY(-4px)}
+    .card img{width:100%;height:120px;object-fit:cover;border-radius:8px}
+    .card h4{margin:8px 0 0 0;text-align:center;color:#fff}
+
+    /* controles siempre visibles y clicables */
+    .admin-controls{position:absolute;right:8px;top:8px;display:flex;gap:6px;z-index:20}
+    .admin-controls button{background:rgba(0,0,0,0.6);color:#fff;border:none;border-radius:6px;padding:4px 6px;cursor:pointer;font-size:14px}
+    .admin-controls button:hover{background:rgba(255,255,255,0.15)}
+
+    .btn-primary{background:var(--accent,#ff6b00);border:none;color:#000;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600}
+    .add-card{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;cursor:pointer;min-height:160px}
+    .add-card .plus-sign{font-size:38px}
+    .add-card .label{font-weight:700;color:var(--accent,#ff6b00)}
+
+    /* ===== NAMESPACED MODAL PARA EVITAR CONFLICTOS =====
+       Usamos emp-modal-backdrop / emp-modal para que dashboard.css no afecte.
+    */
+    .emp-modal-backdrop{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.6);
+      z-index:99999;
+      /* No usamos flex en el backdrop para eliminar override de reglas externas:
+         el modal se posiciona con fixed + transform para centrarlo siempre. */
+    }
+    .emp-modal{
+      position:fixed;
+      top:50%;
+      left:50%;
+      transform:translate(-50%,-50%);
+      background:#ffffff; /* fondo blanco pedido */
+      color:#000;
+      border-radius:10px;
+      padding:20px;
+      max-width:520px;
+      width:94%;
+      box-shadow:0 10px 40px rgba(0,0,0,0.45);
+      z-index:100000;
+      box-sizing:border-box;
+    }
+
+    .emp-modal h3{margin:0 0 10px 0;text-align:center;color:#111;font-size:20px}
+    .emp-modal form{display:flex;flex-direction:column;gap:10px}
+    .emp-modal label{font-weight:600;color:#111;font-size:14px}
+    .emp-modal input[type="text"],
+    .emp-modal input[type="email"],
+    .emp-modal input[type="password"],
+    .emp-modal input[type="file"],
+    .emp-modal textarea,
+    .emp-modal select {
+      padding:8px;border-radius:6px;border:1px solid #ccc;font-size:14px;box-sizing:border-box;
+    }
+    .emp-modal .small-note{font-size:13px;color:#333;margin-top:-4px}
+    .emp-modal .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+    .emp-modal .btn-primary{color:#fff;background:var(--accent,#ff6b00);border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:700}
+    .emp-modal .btn-secondary{background:#555;color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer}
+
+    /* responsive */
+    @media (max-width:480px){
+      .emp-modal{width:96%;padding:14px}
+    }
+  </style>
+</head>
+<body>
+  <video class="bg-video" autoplay muted loop playsinline>
+    <source src="../images/fondo%20proyecto.mp4" type="video/mp4">
+  </video>
+  <div class="overlay"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <img src="../images/logo.webp" alt="logo" class="logo">
+      <div><div style="font-weight:700">Taller Toreto</div><div style="font-size:12px;opacity:.8">Panel administrador</div></div>
+    </div>
+    <div><button id="backBtn" class="btn-primary" title="Volver">Volver</button></div>
+  </header>
+
+  <main>
+    <h1>Empleados</h1>
+    <div id="empleadosContainer">
+      <div class="cards" id="empleadosGrid" aria-live="polite"></div>
+    </div>
+  </main>
+
+  <script>
+  /*************************************************************************
+   * Helpers IndexedDB - pequeño wrapper (promesas)
+   *************************************************************************/
+  (function(){
+    window._EmpDB = window._EmpDB || (function(){
+      let _db = null;
+      function openDB(){
+        if(_db) return Promise.resolve(_db);
+        return new Promise((res, rej) => {
+          if(!('indexedDB' in window)) return rej(new Error('IndexedDB no soportado'));
+          const rq = indexedDB.open('TallerToretoDB', 1);
+          rq.onupgradeneeded = function(e){
+            const db = e.target.result;
+            if(!db.objectStoreNames.contains('empleado_files')){
+              db.createObjectStore('empleado_files');
+            }
+          };
+          rq.onsuccess = function(){ _db = rq.result; res(_db); };
+          rq.onerror = function(ev){ rej(rq.error || new Error('Error abriendo IDB')); };
+        });
+      }
+
+      function putFile(key, file){
+        return openDB().then(db=>{
+          return new Promise((res, rej)=>{
+            const tx = db.transaction(['empleado_files'], 'readwrite');
+            tx.objectStore('empleado_files').put(file, key);
+            tx.oncomplete = ()=>res(true);
+            tx.onerror = ()=>rej(tx.error || new Error('Error guardando archivo en IDB'));
+          });
+        });
+      }
+
+      function getFile(key){
+        return openDB().then(db=>{
+          return new Promise((res, rej)=>{
+            const tx = db.transaction(['empleado_files'],'readonly');
+            const req = tx.objectStore('empleado_files').get(key);
+            req.onsuccess = ()=>res(req.result || null);
+            req.onerror = ()=>rej(req.error || new Error('Error leyendo archivo en IDB'));
+          });
+        });
+      }
+
+      function deleteFile(key){
+        return openDB().then(db=>{
+          return new Promise((res, rej)=>{
+            const tx = db.transaction(['empleado_files'],'readwrite');
+            tx.objectStore('empleado_files').delete(key);
+            tx.oncomplete = ()=>res(true);
+            tx.onerror = ()=>rej(tx.error || new Error('Error eliminando archivo en IDB'));
+          });
+        });
+      }
+
+      return { openDB, putFile, getFile, deleteFile };
+    })();
+  })();
+
+  /*************************************************************************
+   * Utilidades y manejo de empleados (metadatos en localStorage,
+   * archivos binarios en IndexedDB)
+   *************************************************************************/
+  (function(){
+    const grid = document.getElementById('empleadosGrid');
+    const LS_KEY = 'empleadosDemo';
+
+    function getEmpleados(){
+      try{ return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); }catch(e){ return []; }
+    }
+    function saveEmpleados(list){
+      localStorage.setItem(LS_KEY, JSON.stringify(list));
+    }
+    function generateId(prefix='emp'){
+      return `${prefix}_${Date.now()}_${Math.floor(Math.random()*1000000)}`;
+    }
+
+    // render: crea tarjeta y luego carga imagen desde IDB si existe
+    function cargarEmpleados(){
+      const lista = getEmpleados();
+      grid.innerHTML = '';
+      lista.forEach((emp, idx) => {
+        const card = document.createElement('div'); card.className = 'card';
+        const controls = document.createElement('div'); controls.className = 'admin-controls';
+
+        const btnDel = document.createElement('button'); btnDel.type='button'; btnDel.innerText='➖'; btnDel.title='Eliminar';
+        btnDel.addEventListener('click', (ev)=>{ ev.stopPropagation(); if(confirm('¿Eliminar este empleado?')) eliminarEmpleado(idx); });
+
+        const btnEdit = document.createElement('button'); btnEdit.type='button'; btnEdit.innerText='✏️'; btnEdit.title='Editar';
+        btnEdit.addEventListener('click', (ev)=>{ ev.stopPropagation(); abrirModal(emp, idx); });
+
+        const btnPdf = document.createElement('button'); btnPdf.type='button'; btnPdf.innerText='📋'; btnPdf.title='Descargar hoja de vida';
+        btnPdf.addEventListener('click', async (ev)=>{
+          ev.stopPropagation();
+          if(emp.cvKey){
+            try{
+              const blob = await window._EmpDB.getFile(emp.cvKey);
+              if(!blob){ alert('No se encontró el archivo'); return; }
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a'); a.href = url; a.download = `${sanitizeFileName(emp.nombre||'Empleado')}_HojaDeVida.pdf`;
+              document.body.appendChild(a); a.click(); a.remove();
+              setTimeout(()=>URL.revokeObjectURL(url), 3000);
+            }catch(err){ console.error(err); alert('Error descargando CV'); }
+          } else {
+            alert('No hay hoja de vida adjunta para este empleado.');
+          }
+        });
+
+        controls.appendChild(btnDel); controls.appendChild(btnEdit); controls.appendChild(btnPdf);
+        card.appendChild(controls);
+
+        const img = document.createElement('img'); img.alt = emp.nombre || 'Empleado';
+        // placeholder image while loading
+        img.src = emp.photoKey ? '../images/mecanico.jpg' : (emp.photoFallback || '../images/mecanico.jpg');
+        card.appendChild(img);
+
+        const nameEl = document.createElement('h4'); nameEl.textContent = emp.nombre || 'Sin nombre';
+        card.appendChild(nameEl);
+
+        grid.appendChild(card);
+
+        // si tiene photoKey, cargar desde IDB y asignar object URL
+        if(emp.photoKey){
+          (async ()=>{
+            try{
+              const blob = await window._EmpDB.getFile(emp.photoKey);
+              if(blob){
+                const url = URL.createObjectURL(blob);
+                img.src = url;
+                // revoke after some time to avoid leak (keeping minimal)
+                setTimeout(()=>URL.revokeObjectURL(url), 60000);
+              }
+            }catch(e){ console.warn('No se pudo cargar imagen desde IDB', e); }
+          })();
+        }
+      });
+
+      // tarjeta añadir
+      const addCard = document.createElement('div'); addCard.className='card add-card';
+      addCard.innerHTML = `<div class="plus-sign">➕</div><div class="label">Agregar empleado</div>`;
+      addCard.addEventListener('click', ()=>abrirModal());
+      grid.appendChild(addCard);
+    }
+
+    async function eliminarEmpleado(index){
+      const lista = getEmpleados();
+      const emp = lista[index];
+      if(!emp) return;
+      // eliminar archivos asociados en IDB
+      try{
+        if(emp.photoKey) await window._EmpDB.deleteFile(emp.photoKey);
+        if(emp.cvKey) await window._EmpDB.deleteFile(emp.cvKey);
+      }catch(e){ console.warn('Error eliminando archivos en IDB', e); }
+      lista.splice(index,1);
+      saveEmpleados(lista);
+      cargarEmpleados();
+    }
+
+    function sanitizeFileName(name){
+      return (name||'file').replace(/[^\w\-_. ]+/g,'').trim().replace(/\s+/g,'_');
+    }
+
+    // abrir modal: para nuevo o editar
+    function abrirModal(data=null, index=null){
+      // eliminar modales previos si existen
+      const prev = document.querySelector('.emp-modal-backdrop');
+      if(prev) prev.remove();
+
+      const backdrop = document.createElement('div'); backdrop.className = 'emp-modal-backdrop';
+      const modal = document.createElement('div'); modal.className = 'emp-modal';
+      modal.innerHTML = `
+        <h3>${data ? 'Editar Empleado' : 'Agregar Empleado'}</h3>
+        <form id="empForm" autocomplete="off" novalidate>
+          <label for="empNombre">Nombre</label>
+          <input id="empNombre" name="empNombre" type="text" value="${data ? escapeHtml(data.nombre) : ''}" required>
+
+          <label for="empTel">Teléfono</label>
+          <input id="empTel" name="empTel" type="text" maxlength="10" value="${data ? escapeHtml(data.contacto) : ''}" required>
+          <div class="small-note">Debe iniciar con 3 y tener 10 dígitos (solo números).</div>
+
+          <label for="empMail">Email</label>
+          <input id="empMail" name="empMail" type="email" value="${data ? escapeHtml(data.email) : ''}" required>
+
+          <label for="empFoto">Foto (imagen)</label>
+          <input id="empFoto" name="empFoto" type="file" accept="image/*" ${data ? '' : 'required'}>
+
+          <label for="empCv">Hoja de vida (PDF)</label>
+          <input id="empCv" name="empCv" type="file" accept="application/pdf" ${data ? '' : 'required'}>
+          <div class="small-note">${data && (data.photoKey || data.cvKey) ? 'Archivos actuales disponibles (si no subes nuevos, se conservarán).' : ''}</div>
+
+          <label for="empUser">Usuario</label>
+          <input id="empUser" name="empUser" type="text" value="${data ? escapeHtml(data.username) : ''}" required>
+
+          <label for="empPass">Contraseña</label>
+          <input id="empPass" name="empPass" type="password" value="${data ? escapeHtml(data.password) : ''}" required>
+
+          <div class="actions">
+            <button type="button" class="btn-secondary" id="btnCancel">Cancelar</button>
+            <button type="submit" class="btn-primary" id="btnSave">${data ? 'Guardar' : 'Añadir'}</button>
+          </div>
+        </form>
+      `;
+      backdrop.appendChild(modal);
+      document.body.appendChild(backdrop);
+
+      // handlers
+      modal.querySelector('#btnCancel').addEventListener('click', ()=> backdrop.remove());
+
+      modal.querySelector('#empForm').addEventListener('submit', async (ev)=>{
+        ev.preventDefault();
+        const form = ev.currentTarget;
+        const nombre = form.empNombre.value.trim();
+        const telefonoRaw = form.empTel.value.trim();
+        const telefono = telefonoRaw.replace(/\s+/g,'');
+        const email = form.empMail.value.trim();
+        const user = form.empUser.value.trim();
+        const pass = form.empPass.value;
+
+        // validaciones
+        if(!nombre || !telefono || !email || !user || !pass){
+          alert('Completa todos los campos obligatorios.');
+          return;
+        }
+        if(!/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/.test(nombre)){
+          alert('El nombre solo puede contener letras y espacios.');
+          return;
+        }
+        if(!/^\d{10}$/.test(telefono) || telefono.charAt(0) !== '3'){
+          alert('Teléfono inválido. Debe tener 10 dígitos y comenzar con 3.');
+          return;
+        }
+        if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+          alert('Email inválido.');
+          return;
+        }
+
+        // obtener archivos seleccionados (si hubo)
+        const fotoFile = form.empFoto.files[0];
+        const cvFile = form.empCv.files[0];
+
+        // prepare keys: si edición y no sube archivos, conservar claves previas; si sube, escribir en IDB y borrar previas
+        let photoKey = data?.photoKey || null;
+        let cvKey = data?.cvKey || null;
+
+        try{
+          // subimos archivos solo si el usuario seleccionó
+          if(fotoFile){
+            const newPhotoKey = generateId('photo');
+            await window._EmpDB.putFile(newPhotoKey, fotoFile);
+            // borrar anterior si existía
+            if(photoKey && photoKey !== newPhotoKey){
+              try{ await window._EmpDB.deleteFile(photoKey); }catch(e){ console.warn('Error borrando foto antigua', e); }
+            }
+            photoKey = newPhotoKey;
+          }
+          if(cvFile){
+            // validar tipo PDF (si el archivo viene con tipo distinto a application/pdf, aún permitimos pero comprobamos extensión)
+            if(cvFile.type !== 'application/pdf' && !cvFile.name.toLowerCase().endsWith('.pdf')){
+              if(!confirm('El archivo seleccionado no parece un PDF. ¿Deseas continuar?')) return;
+            }
+            const newCvKey = generateId('cv');
+            await window._EmpDB.putFile(newCvKey, cvFile);
+            if(cvKey && cvKey !== newCvKey){
+              try{ await window._EmpDB.deleteFile(cvKey); }catch(e){ console.warn('Error borrando cv antiguo', e); }
+            }
+            cvKey = newCvKey;
+          }
+        }catch(err){
+          console.error('Error guardando archivos en IDB', err);
+          alert('Error guardando archivos. Intenta con archivos más pequeños o recarga la página.');
+          return;
+        }
+
+        // construir objeto empleado
+        const lista = getEmpleados();
+        const empleadoObj = {
+          id: data?.id || generateId('emp'),
+          nombre,
+          contacto: telefono,
+          email,
+          username: user,
+          password: pass,
+          photoKey: photoKey || null,
+          cvKey: cvKey || null
+        };
+
+        if(data && typeof index === 'number'){
+          // edición
+          lista[index] = empleadoObj;
+        } else {
+          // creación: evitamos usuarios duplicados exactos (opcional)
+          // no bloqueamos: si existe preguntar
+          const dup = lista.find(e=>e.username === user);
+          if(dup){
+            if(!confirm('Ya existe un usuario con ese nombre. ¿Deseas crear de todas formas?')) {
+              return;
+            }
+          }
+          lista.push(empleadoObj);
+        }
+
+        // guardamos metadatos
+        try{
+          saveEmpleados(lista);
+        }catch(err){
+          console.error('Error guardando metadatos en localStorage', err);
+          alert('Error guardando datos (espacio de almacenamiento insuficiente). Intenta reducir el tamaño de los archivos.');
+          return;
+        }
+
+        backdrop.remove();
+        cargarEmpleados();
+      });
+    }
+
+    function escapeHtml(s){
+      return String(s||'').replace(/[&<>"']/g, function(ch){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[ch]; });
+    }
+
+    // init
+    document.getElementById('backBtn').addEventListener('click', ()=>{ location.href='dashboard_admin.html'; });
+    cargarEmpleados();
+
+    // Exponer funciones (para debug si quieres)
+    window.__empleados_admin = { cargarEmpleados };
+
+  })();
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
