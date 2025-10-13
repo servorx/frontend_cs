@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
 	if(!form) return;
 
-	// Role selection buttons: when clicked, hide selection and show form
+	// === SELECCIÓN DE ROL ===
 	roleButtons.forEach(btn=>{
 		btn.addEventListener('click', ()=>{
 			const r = btn.getAttribute('data-role');
@@ -26,12 +26,10 @@ document.addEventListener('DOMContentLoaded', function(){
 			selectedRoleName.textContent = r;
 			roleSelection.classList.add('hidden');
 			form.classList.remove('hidden');
-			// show register link only for cliente
 			if(registerLink){
 				if(r === 'cliente') registerLink.classList.remove('hidden');
 				else registerLink.classList.add('hidden');
 			}
-			// focus on username
 			const u = document.getElementById('username');
 			if(u) u.focus();
 		});
@@ -44,13 +42,11 @@ document.addEventListener('DOMContentLoaded', function(){
 		if(registerLink) registerLink.classList.add('hidden');
 	});
 
-	// Show register form when clicking register (only visible for cliente)
+	// === MOSTRAR FORMULARIO DE REGISTRO (solo cliente) ===
 	if(registerLink && registerForm){
 		registerLink.addEventListener('click', ()=>{
-			// show register form
 			form.classList.add('hidden');
 			registerForm.classList.remove('hidden');
-			// ensure role is cliente
 			registerRoleInput.value = 'cliente';
 			registerRoleName.textContent = 'cliente';
 			if(regMsg) regMsg.textContent = '';
@@ -67,6 +63,7 @@ document.addEventListener('DOMContentLoaded', function(){
 		});
 	}
 
+	// === REGISTRO DEL CLIENTE ===
 	if(registerForm){
 		registerForm.addEventListener('submit', function(e){
 			e.preventDefault();
@@ -75,54 +72,69 @@ document.addEventListener('DOMContentLoaded', function(){
 			const email = fd.get('email') || '';
 			const telefono = fd.get('telefono') || '';
 			const direccion = fd.get('direccion') || '';
-			if(regMsg) regMsg.textContent = `Registrando ${nombre}...`;
+			const password = fd.get('password') || '';
+
+			if(!nombre || !email || !telefono || !direccion || !password){
+				regMsg.textContent = 'Por favor completa todos los campos.';
+				return;
+			}
+
+			let clientes = [];
+			try{ clientes = JSON.parse(localStorage.getItem('clientesDemo') || '[]'); }catch(e){}
+			const existe = clientes.some(c => c.email === email);
+			if(existe){
+				regMsg.textContent = 'Ya existe un cliente registrado con este correo.';
+				return;
+			}
+
+			clientes.push({ nombre, email, telefono, direccion, password });
+			localStorage.setItem('clientesDemo', JSON.stringify(clientes));
+
+			regMsg.textContent = 'Registro exitoso ✅ Ahora puedes iniciar sesión.';
 			setTimeout(()=>{
-				console.log('registro_simulado:', {nombre,email,telefono,direccion});
-				if(regMsg) regMsg.textContent = 'Registro exitoso (simulado). Redirigiendo...';
-				// redirect to dashboard as cliente (restore client pages)
-				location.href = 'Html/dashboard.html?role=cliente';
-			},700);
+				registerForm.classList.add('hidden');
+				roleSelection.classList.remove('hidden');
+				if(registerLink) registerLink.classList.add('hidden');
+			}, 1200);
 		});
 	}
 
+	// === INICIO DE SESIÓN ===
 	form.addEventListener('submit', async function(e){
 		e.preventDefault();
 		const formData = new FormData(form);
 		const username = formData.get('username') || '';
+		const password = formData.get('password') || '';
 		const role = (formData.get('role') || '').toString();
 
-		// Simple client-side feedback — integrate real auth later
 		msg.textContent = `Entrando como ${role} — ${username ? username : 'usuario'}`;
 		setTimeout(async ()=>{
 			console.log('login:', {username, role});
-				if(role === 'mecanico'){
-				// validate mecanico credentials against empleadosDemo (employees have username/password)
+
+			if(role === 'mecanico'){
 				try{
 					const empleados = JSON.parse(localStorage.getItem('empleadosDemo')||'[]');
-					const found = empleados.find(m=> m.username && m.username === username && m.password && m.password === (formData.get('password')||''));
-					if(found && found.username === username){
-						// set current user for mechanic session
-						try{ localStorage.setItem('user', username); localStorage.setItem('demoRole', 'mecanico'); }catch(e){}
+					const found = empleados.find(m=> m.username && m.username === username && m.password && m.password === password);
+					if(found){
+						localStorage.setItem('user', username);
+						localStorage.setItem('demoRole', 'mecanico');
 						location.href = `Html/mecanico_dashboard.html?role=${encodeURIComponent(role)}&user=${encodeURIComponent(username)}`;
-					} else {
-						msg.textContent = 'No estás registrado en la empresa';
-					}
+					} else msg.textContent = 'No estás registrado en la empresa';
 				}catch(err){ console.error(err); msg.textContent = 'Error validando usuario'; }
-			} else if(role === 'proveedor' || role === 'provedor'){
-				// validate proveedor credentials
+			}
+			else if(role === 'proveedor' || role === 'provedor'){
 				try{
 					const provs = JSON.parse(localStorage.getItem('proveedoresDemo')||'[]');
-					const found = provs.find(p=> (p.username && p.username === username && p.password));
-					if(found && found.username === username){
+					const found = provs.find(p=> p.username && p.username === username && p.password === password);
+					if(found){
+						localStorage.setItem('user', username);
+						localStorage.setItem('demoRole', 'proveedor');
 						location.href = `Html/proveedor_panel.html?role=${encodeURIComponent(role)}&user=${encodeURIComponent(username)}`;
-					} else {
-						msg.textContent = 'No estás registrado en la empresa';
-					}
+					} else msg.textContent = 'No estás registrado en la empresa';
 				}catch(err){ console.error(err); msg.textContent = 'Error validando usuario'; }
-			} else if(role === 'admin' || role === 'administrador'){
-				// ADMIN: verify hashed password (client-side demo only). Uses Web Crypto Subtle API.
+			}
+			else if(role === 'admin' || role === 'administrador'){
 				const adminUser = 'administrad0r_tallertoreto1';
-				// SHA-256 of '1003865379' computed locally and embedded (hex)
 				const adminHash = '03d3350fc099ca6a2aae344f7b6d8f2ae066ca0e25055eb1eaa9e22dd6f41be2';
 				const provided = (formData.get('password') || '').toString();
 				try{
@@ -133,17 +145,26 @@ document.addEventListener('DOMContentLoaded', function(){
 						const hashArray = Array.from(new Uint8Array(digest));
 						const hashHex = hashArray.map(b=>b.toString(16).padStart(2,'0')).join('');
 						if(hashHex === adminHash){
-							try{ localStorage.setItem('demoRole', 'admin'); }catch(e){}
+							localStorage.setItem('demoRole', 'admin');
 							location.href = `Html/dashboard_admin.html?role=admin`;
-						} else {
-							msg.textContent = 'Credenciales de administrador inválidas.';
-						}
-					} else {
-						msg.textContent = 'Credenciales de administrador inválidas.';
-					}
+						} else msg.textContent = 'Credenciales de administrador inválidas.';
+					} else msg.textContent = 'Credenciales de administrador inválidas.';
 				}catch(err){ console.error('hash err', err); msg.textContent = 'Error validando administrador'; }
-			} else {
-				// clientes van al dashboard principal
+			}
+			else if(role === 'cliente'){
+				try{
+					const clientes = JSON.parse(localStorage.getItem('clientesDemo') || '[]');
+					const found = clientes.find(c => c.email === username && c.password === password);
+					if(found){
+						localStorage.setItem('user', JSON.stringify(found));
+						localStorage.setItem('demoRole', 'cliente');
+						location.href = `Html/dashboard.html?role=cliente`;
+					}else{
+						msg.textContent = 'Debes registrarte antes de iniciar sesión.';
+					}
+				}catch(err){ msg.textContent = 'Error validando cliente.'; }
+			}
+			else {
 				location.href = `Html/dashboard.html?role=${encodeURIComponent(role)}`;
 			}
 		}, 700);

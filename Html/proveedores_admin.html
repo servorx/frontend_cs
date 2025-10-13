@@ -4,7 +4,6 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Gestión de Proveedores - Taller Toreto (Admin)</title>
-
   <link rel="stylesheet" href="../Css/dashboard.css" />
   <style>
     body{margin:0;font-family:Segoe UI, Roboto, Arial, sans-serif;color:#fff;min-height:100vh}
@@ -29,33 +28,14 @@
     .add-card{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;cursor:pointer;min-height:160px}
     .add-card .plus-sign{font-size:38px}
     .add-card .label{font-weight:700;color:var(--accent,#ff6b00)}
-
-    /* Modal namespaced como en empleados para evitar conflictos */
-    .prov-modal-backdrop{
-      position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;
-    }
-    .prov-modal{
-      position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-      background:#ffffff;color:#000;border-radius:10px;
-      padding:20px;max-width:520px;width:94%;
-      box-shadow:0 10px 40px rgba(0,0,0,0.45);z-index:100000;
-      box-sizing:border-box;
-    }
-    .prov-modal h3{margin:0 0 10px 0;text-align:center;color:#111;font-size:20px}
+    .prov-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;}
+    .prov-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;color:#000;border-radius:10px;padding:20px;max-width:520px;width:94%;box-shadow:0 10px 40px rgba(0,0,0,0.45);}
     .prov-modal form{display:flex;flex-direction:column;gap:10px;max-height:80vh;overflow-y:auto;padding-right:6px;}
     .prov-modal label{font-weight:600;color:#111;font-size:14px}
-    .prov-modal input[type="text"],
-    .prov-modal input[type="email"],
-    .prov-modal input[type="password"],
-    .prov-modal input[type="file"],
-    .prov-modal textarea{
-      padding:8px;border-radius:6px;border:1px solid #ccc;font-size:14px;box-sizing:border-box;
-    }
-    .prov-modal .small-note{font-size:13px;color:#333;margin-top:-4px}
+    .prov-modal input,.prov-modal textarea{padding:8px;border-radius:6px;border:1px solid #ccc;font-size:14px;box-sizing:border-box;}
     .prov-modal .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
     .prov-modal .btn-primary{color:#fff;background:var(--accent,#ff6b00);border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:700}
     .prov-modal .btn-secondary{background:#555;color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer}
-    @media (max-width:480px){.prov-modal{width:96%;padding:14px}}
   </style>
 </head>
 <body>
@@ -67,7 +47,10 @@
   <header class="topbar">
     <div class="brand">
       <img src="../images/logo.webp" alt="logo" class="logo">
-      <div><div style="font-weight:700">Taller Toreto</div><div style="font-size:12px;opacity:.8">Panel administrador</div></div>
+      <div>
+        <div style="font-weight:700">Taller Toreto</div>
+        <div style="font-size:12px;opacity:.8">Panel administrador</div>
+      </div>
     </div>
     <div><button id="backBtn" class="btn-primary" title="Volver">Volver</button></div>
   </header>
@@ -80,335 +63,118 @@
   </main>
 
   <script>
-  /*************************************************************************
-   * IndexedDB wrapper (idéntico a la solución de empleados)
-   *************************************************************************/
   (function(){
     window._EmpDB = window._EmpDB || (function(){
       let _db = null;
       function openDB(){
         if(_db) return Promise.resolve(_db);
-        return new Promise((res, rej) => {
-          if(!('indexedDB' in window)) return rej(new Error('IndexedDB no soportado'));
+        return new Promise((res, rej)=>{
           const rq = indexedDB.open('TallerToretoDB', 1);
-          rq.onupgradeneeded = function(e){
+          rq.onupgradeneeded = e=>{
             const db = e.target.result;
-            if(!db.objectStoreNames.contains('empleado_files')){
+            if(!db.objectStoreNames.contains('empleado_files'))
               db.createObjectStore('empleado_files');
-            }
           };
-          rq.onsuccess = function(){ _db = rq.result; res(_db); };
-          rq.onerror = function(ev){ rej(rq.error || new Error('Error abriendo IDB')); };
+          rq.onsuccess = ()=>{_db = rq.result; res(_db);};
+          rq.onerror = ()=>rej(rq.error);
         });
       }
-
-      function putFile(key, file){
-        return openDB().then(db=>{
-          return new Promise((res, rej)=>{
-            const tx = db.transaction(['empleado_files'], 'readwrite');
-            tx.objectStore('empleado_files').put(file, key);
-            tx.oncomplete = ()=>res(true);
-            tx.onerror = ()=>rej(tx.error || new Error('Error guardando archivo en IDB'));
-          });
-        });
-      }
-
-      function getFile(key){
-        return openDB().then(db=>{
-          return new Promise((res, rej)=>{
-            const tx = db.transaction(['empleado_files'],'readonly');
-            const req = tx.objectStore('empleado_files').get(key);
-            req.onsuccess = ()=>res(req.result || null);
-            req.onerror = ()=>rej(req.error || new Error('Error leyendo archivo en IDB'));
-          });
-        });
-      }
-
-      function deleteFile(key){
-        return openDB().then(db=>{
-          return new Promise((res, rej)=>{
-            const tx = db.transaction(['empleado_files'],'readwrite');
-            tx.objectStore('empleado_files').delete(key);
-            tx.oncomplete = ()=>res(true);
-            tx.onerror = ()=>rej(tx.error || new Error('Error eliminando archivo en IDB'));
-          });
-        });
-      }
-
-      return { openDB, putFile, getFile, deleteFile };
+      function putFile(key,file){return openDB().then(db=>new Promise((res,rej)=>{
+        const tx=db.transaction(['empleado_files'],'readwrite');
+        tx.objectStore('empleado_files').put(file,key);
+        tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error);
+      }));}
+      function getFile(key){return openDB().then(db=>new Promise((res,rej)=>{
+        const tx=db.transaction(['empleado_files'],'readonly');
+        const req=tx.objectStore('empleado_files').get(key);
+        req.onsuccess=()=>res(req.result||null);req.onerror=()=>rej(req.error);
+      }));}
+      function deleteFile(key){return openDB().then(db=>new Promise((res,rej)=>{
+        const tx=db.transaction(['empleado_files'],'readwrite');
+        tx.objectStore('empleado_files').delete(key);
+        tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error);
+      }));}
+      return {openDB,putFile,getFile,deleteFile};
     })();
   })();
 
-  /*************************************************************************
-   * Lógica de proveedores (metadatos en localStorage 'proveedoresDemo',
-   * archivos (foto + cv) en IndexedDB)
-   *************************************************************************/
   (function(){
-    const grid = document.getElementById('proveedoresGrid');
-    const LS_KEY = 'proveedoresDemo';
+    const grid=document.getElementById('proveedoresGrid');
+    const LS_KEY='proveedoresDemo';
+    const get=()=>JSON.parse(localStorage.getItem(LS_KEY)||'[]');
+    const save=v=>localStorage.setItem(LS_KEY,JSON.stringify(v));
+    const genId=p=>`${p}_${Date.now()}_${Math.floor(Math.random()*1e6)}`;
 
-    function getProveedores(){
-      try{ return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); }catch(e){ return []; }
-    }
-    function saveProveedores(list){
-      localStorage.setItem(LS_KEY, JSON.stringify(list));
-    }
-    function generateId(prefix='prov'){
-      return `${prefix}_${Date.now()}_${Math.floor(Math.random()*1000000)}`;
-    }
-
-    // Renderiza todas las tarjetas
-    function cargarProveedores(){
-      const lista = getProveedores();
-      grid.innerHTML = '';
-      lista.forEach((prov, idx) => {
-        const card = document.createElement('div'); card.className = 'card';
-        const controls = document.createElement('div'); controls.className = 'admin-controls';
-
-        const btnDel = document.createElement('button'); btnDel.type='button'; btnDel.innerText='➖'; btnDel.title='Eliminar';
-        btnDel.addEventListener('click', (ev)=>{ ev.stopPropagation(); if(confirm('¿Eliminar este proveedor?')) eliminarProveedor(idx); });
-
-        const btnEdit = document.createElement('button'); btnEdit.type='button'; btnEdit.innerText='✏️'; btnEdit.title='Editar';
-        btnEdit.addEventListener('click', (ev)=>{ ev.stopPropagation(); abrirModal(prov, idx); });
-
-        const btnPdf = document.createElement('button'); btnPdf.type='button'; btnPdf.innerText='📋'; btnPdf.title='Descargar documento';
-        btnPdf.addEventListener('click', async (ev)=>{
-          ev.stopPropagation();
-          if(prov.cvKey){
-            try{
-              const blob = await window._EmpDB.getFile(prov.cvKey);
-              if(!blob){ alert('No se encontró el archivo'); return; }
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a'); a.href = url; a.download = `${sanitizeFileName(prov.empresa||prov.nombre)}_Documento.pdf`;
-              document.body.appendChild(a); a.click(); a.remove();
-              setTimeout(()=>URL.revokeObjectURL(url), 3000);
-            }catch(err){ console.error(err); alert('Error descargando PDF'); }
-          } else if(prov.cv){
-            // backward-compat: si hay cv en base64 (antiguo), descargar directamente
-            const a = document.createElement('a'); a.href = prov.cv; a.download = `${sanitizeFileName(prov.empresa||prov.nombre)}_Documento.pdf`; document.body.appendChild(a); a.click(); a.remove();
-          } else {
-            alert('No hay documento adjunto para este proveedor.');
-          }
-        });
-
-        controls.appendChild(btnDel); controls.appendChild(btnEdit); controls.appendChild(btnPdf);
-        card.appendChild(controls);
-
-        const img = document.createElement('img'); img.alt = prov.empresa || prov.nombre || 'Proveedor';
-        img.src = prov.photoFallback || '../images/repuestos.jpg';
-        card.appendChild(img);
-
-        const title = document.createElement('h4'); title.textContent = prov.empresa || prov.nombre || 'Sin nombre';
-        card.appendChild(title);
-        const contact = document.createElement('small'); contact.textContent = prov.contacto || prov.telefono || prov.email || '';
-        card.appendChild(contact);
-
-        grid.appendChild(card);
-
-        // si tiene photoKey, cargar desde IDB
-        if(prov.photoKey){
-          (async ()=>{
-            try{
-              const blob = await window._EmpDB.getFile(prov.photoKey);
-              if(blob){
-                const url = URL.createObjectURL(blob);
-                img.src = url;
-                setTimeout(()=>URL.revokeObjectURL(url), 60000);
-              }
-            }catch(e){ console.warn('No se pudo cargar imagen desde IDB', e); }
-          })();
-        } else if(prov.foto){
-          // compatibilidad con formatos previos (base64)
-          img.src = prov.foto;
-        }
-      });
-
-      // tarjeta añadir
-      const addCard = document.createElement('div'); addCard.className='card add-card';
-      addCard.innerHTML = `<div class="plus-sign">➕</div><div class="label">Agregar proveedor</div>`;
-      addCard.addEventListener('click', ()=> abrirModal());
-      grid.appendChild(addCard);
-    }
-
-    async function eliminarProveedor(index){
-      const lista = getProveedores();
-      const prov = lista[index];
-      if(!prov) return;
-      // eliminar archivos asociados
-      try{
-        if(prov.photoKey) await window._EmpDB.deleteFile(prov.photoKey);
-        if(prov.cvKey) await window._EmpDB.deleteFile(prov.cvKey);
-      }catch(e){ console.warn('Error eliminando archivos en IDB', e); }
-      lista.splice(index,1);
-      saveProveedores(lista);
-      cargarProveedores();
-    }
-
-    function sanitizeFileName(name){
-      return (name||'file').replace(/[^\w\-_. ]+/g,'').trim().replace(/\s+/g,'_');
-    }
-
-    // abrir modal: nuevo o edición
-    async function abrirModal(data=null, index=null){
-      // quitar modales previos
-      const prev = document.querySelector('.prov-modal-backdrop'); if(prev) prev.remove();
-
-      const backdrop = document.createElement('div'); backdrop.className = 'prov-modal-backdrop';
-      const modal = document.createElement('div'); modal.className = 'prov-modal';
-
-      modal.innerHTML = `
-        <h3>${data ? 'Editar proveedor' : 'Agregar proveedor'}</h3>
-        <form id="provForm" autocomplete="off" novalidate>
-          <label for="pNombre">Nombre del contacto</label>
-          <input id="pNombre" name="pNombre" type="text" value="${escapeHtml(data?.nombre||'')}" required>
-
-          <label for="pEmpresa">Nombre de la empresa</label>
-          <input id="pEmpresa" name="pEmpresa" type="text" value="${escapeHtml(data?.empresa||'')}" required>
-
-          <label for="pTel">Teléfono</label>
-          <input id="pTel" name="pTel" type="text" maxlength="10" value="${escapeHtml(data?.telefono||'')}" required>
-          <div class="small-note">Debe iniciar con 3 y tener 10 dígitos (solo números).</div>
-
-          <label for="pMail">Email</label>
-          <input id="pMail" name="pMail" type="email" value="${escapeHtml(data?.email||'')}" required>
-
-          <label for="pFoto">Foto (imagen)</label>
-          <input id="pFoto" name="pFoto" type="file" accept="image/*" ${data ? '' : 'required'}>
-
-          <label for="pCv">Documento PDF</label>
-          <input id="pCv" name="pCv" type="file" accept="application/pdf" ${data ? '' : 'required'}>
-          <div class="small-note">${data && (data.photoKey || data.cvKey) ? 'Si no subes archivos nuevos se conservarán los existentes.' : ''}</div>
-
-          <label for="pUser">Usuario</label>
-          <input id="pUser" name="pUser" type="text" value="${escapeHtml(data?.username||'')}" required>
-
-          <label for="pPass">Contraseña</label>
-          <input id="pPass" name="pPass" type="password" value="${escapeHtml(data?.password||'')}" required>
-
-          <div class="actions">
-            <button type="button" class="btn-secondary" id="btnCancel">Cancelar</button>
-            <button type="submit" class="btn-primary" id="btnSave">${data ? 'Guardar' : 'Añadir'}</button>
-          </div>
-        </form>
-      `;
-
-      backdrop.appendChild(modal);
-      document.body.appendChild(backdrop);
-
-      // handlers
-      modal.querySelector('#btnCancel').addEventListener('click', ()=> backdrop.remove());
-
-      modal.querySelector('#provForm').addEventListener('submit', async (ev)=>{
-        ev.preventDefault();
-        const form = ev.currentTarget;
-        const nombre = form.pNombre.value.trim();
-        const empresa = form.pEmpresa.value.trim();
-        const telefonoRaw = form.pTel.value.trim();
-        const telefono = telefonoRaw.replace(/\s+/g,'');
-        const email = form.pMail.value.trim();
-        const user = form.pUser.value.trim();
-        const pass = form.pPass.value;
-
-        // validaciones
-        if(!nombre || !empresa || !telefono || !email || !user || !pass){
-          alert('Completa todos los campos obligatorios.');
-          return;
-        }
-        if(!/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/.test(nombre)){
-          alert('El nombre del contacto solo puede contener letras y espacios.');
-          return;
-        }
-        if(!/^\d{10}$/.test(telefono) || telefono.charAt(0) !== '3'){
-          alert('Teléfono inválido. Debe tener 10 dígitos y comenzar con 3.');
-          return;
-        }
-        if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
-          alert('Email inválido.');
-          return;
-        }
-
-        const fotoFile = form.pFoto.files[0];
-        const cvFile = form.pCv.files[0];
-
-        // claves actuales (conservar si no se suben nuevas)
-        let photoKey = data?.photoKey || null;
-        let cvKey = data?.cvKey || null;
-
-        try{
-          // Subir foto si se seleccionó
-          if(fotoFile){
-            const newPhotoKey = generateId('prov_photo');
-            await window._EmpDB.putFile(newPhotoKey, fotoFile);
-            // borrar anterior si existía
-            if(photoKey && photoKey !== newPhotoKey){
-              try{ await window._EmpDB.deleteFile(photoKey); }catch(e){ console.warn('Error borrando foto antigua', e); }
-            }
-            photoKey = newPhotoKey;
-          }
-          // Subir CV si se seleccionó
-          if(cvFile){
-            if(cvFile.type !== 'application/pdf' && !cvFile.name.toLowerCase().endsWith('.pdf')){
-              if(!confirm('El archivo seleccionado no parece un PDF. ¿Deseas continuar?')) return;
-            }
-            const newCvKey = generateId('prov_cv');
-            await window._EmpDB.putFile(newCvKey, cvFile);
-            if(cvKey && cvKey !== newCvKey){
-              try{ await window._EmpDB.deleteFile(cvKey); }catch(e){ console.warn('Error borrando cv antiguo', e); }
-            }
-            cvKey = newCvKey;
-          }
-        }catch(err){
-          console.error('Error guardando archivos en IDB', err);
-          alert('Error guardando archivos. Intenta con archivos más pequeños o recarga la página.');
-          return;
-        }
-
-        const lista = getProveedores();
-        const provObj = {
-          id: data?.id || generateId('prov'),
-          nombre,
-          empresa,
-          telefono,
-          email,
-          username: user,
-          password: pass,
-          photoKey: photoKey || null,
-          cvKey: cvKey || null
+    function render(){
+      const list=get();grid.innerHTML='';
+      list.forEach((p,i)=>{
+        const card=document.createElement('div');card.className='card';
+        const c=document.createElement('div');c.className='admin-controls';
+        const del=document.createElement('button');del.textContent='➖';del.onclick=()=>{if(confirm('¿Eliminar este proveedor?'))remove(i)};
+        const edit=document.createElement('button');edit.textContent='✏️';edit.onclick=()=>openModal(p,i);
+        const pdf=document.createElement('button');pdf.textContent='📋';pdf.onclick=async()=>{
+          if(p.cvKey){const blob=await window._EmpDB.getFile(p.cvKey);
+            if(!blob)return alert('No se encontró el archivo');
+            const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=p.empresa+'_Documento.pdf';a.click();
+            setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+          }else alert('No hay documento cargado');
         };
-
-        if(data && typeof index === 'number'){
-          lista[index] = provObj;
-        } else {
-          const dup = lista.find(x => x.username === user);
-          if(dup){
-            if(!confirm('Ya existe un usuario con ese nombre. ¿Deseas crear de todas formas?')) return;
-          }
-          lista.push(provObj);
-        }
-
-        try{
-          saveProveedores(lista);
-        }catch(err){
-          console.error('Error guardando metadatos en localStorage', err);
-          alert('Error guardando datos (espacio de almacenamiento insuficiente). Intenta reducir el tamaño de los archivos.');
-          return;
-        }
-
-        backdrop.remove();
-        cargarProveedores();
+        c.append(del,edit,pdf);card.append(c);
+        const img=document.createElement('img');img.src='../images/repuestos.jpg';card.append(img);
+        const h4=document.createElement('h4');h4.textContent=p.empresa||p.nombre;card.append(h4);
+        const s=document.createElement('small');s.textContent=p.telefono||p.email;card.append(s);
+        grid.append(card);
+        if(p.photoKey)(async()=>{const b=await window._EmpDB.getFile(p.photoKey);if(b){const u=URL.createObjectURL(b);img.src=u;setTimeout(()=>URL.revokeObjectURL(u),60000);}})();
       });
+      const add=document.createElement('div');add.className='card add-card';
+      add.innerHTML='<div class="plus-sign">➕</div><div class="label">Agregar proveedor</div>';
+      add.onclick=()=>openModal();grid.append(add);
     }
 
-    function escapeHtml(s){
-      return String(s||'').replace(/[&<>"']/g, function(ch){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[ch]; });
+    async function remove(i){
+      const list=get();const p=list[i];
+      if(p.photoKey)await window._EmpDB.deleteFile(p.photoKey);
+      if(p.cvKey)await window._EmpDB.deleteFile(p.cvKey);
+      list.splice(i,1);save(list);render();
     }
 
-    // init
-    document.getElementById('backBtn').addEventListener('click', ()=>{ location.href='dashboard_admin.html'; });
-    cargarProveedores();
+    function openModal(data=null,index=null){
+      document.querySelector('.prov-modal-backdrop')?.remove();
+      const b=document.createElement('div');b.className='prov-modal-backdrop';
+      const m=document.createElement('div');m.className='prov-modal';
+      m.innerHTML=`
+        <h3>${data?'Editar proveedor':'Agregar proveedor'}</h3>
+        <form id="f">
+          <label>Nombre del contacto</label><input id="n" value="${data?.nombre||''}" required>
+          <label>Nombre de la empresa</label><input id="em" value="${data?.empresa||''}" required>
+          <label>Teléfono</label><input id="t" maxlength="10" value="${data?.telefono||''}" required>
+          <div class="small-note">Debe iniciar con 3 y tener 10 dígitos.</div>
+          <label>Email (usuario)</label><input id="e" type="email" value="${data?.email||''}" required>
+          <label>Foto</label><input id="f1" type="file" accept="image/*" ${data?'':'required'}>
+          <label>Documento PDF</label><input id="f2" type="file" accept="application/pdf" ${data?'':'required'}>
+          <label>Contraseña</label><input id="p" type="password" value="${data?.password||''}" required>
+          <div class="actions"><button type="button" id="c" class="btn-secondary">Cancelar</button><button class="btn-primary">${data?'Guardar':'Añadir'}</button></div>
+        </form>`;
+      b.append(m);document.body.append(b);
+      m.querySelector('#c').onclick=()=>b.remove();
+      m.querySelector('#f').onsubmit=async ev=>{
+        ev.preventDefault();
+        const nombre=n.value.trim(),empresa=em.value.trim(),tel=t.value.trim(),email=e.value.trim(),pass=p.value;
+        if(!/^\d{10}$/.test(tel)||tel[0]!=='3')return alert('Teléfono inválido');
+        if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return alert('Email inválido');
+        const foto=f1.files[0],cv=f2.files[0];
+        let photoKey=data?.photoKey||null,cvKey=data?.cvKey||null;
+        if(foto){const k=genId('prov_photo');await window._EmpDB.putFile(k,foto);if(photoKey&&photoKey!==k)await window._EmpDB.deleteFile(photoKey);photoKey=k;}
+        if(cv){const k=genId('prov_cv');await window._EmpDB.putFile(k,cv);if(cvKey&&cvKey!==k)await window._EmpDB.deleteFile(cvKey);cvKey=k;}
+        const list=get();
+        const prov={id:data?.id||genId('prov'),nombre,empresa,telefono:tel,email,username:email,password:pass,photoKey,cvKey};
+        if(index!==null)list[index]=prov;else list.push(prov);
+        save(list);b.remove();render();
+      };
+    }
 
-    // exponer para debug si quieres
-    window.__proveedores_admin = { cargarProveedores };
+    document.getElementById('backBtn').onclick=()=>location.href='dashboard_admin.html';
+    render();
   })();
   </script>
 </body>

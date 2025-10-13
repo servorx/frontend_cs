@@ -16,9 +16,12 @@
         <div class="login-card">
             <h2>Iniciar sesión</h2>
             <div id="roleSelection" class="role-selection">
-                <button class="role-button" data-role="administrador">Administrador</button>
-                <button class="role-button" data-role="mecanico">Mecánico</button>
+                <!-- 🔒 Administrador oculto (solo visible con combinación secreta) -->
+                <button class="role-button" data-role="administrador" id="adminBtn" style="display:none;">Administrador</button>
+
+                <!-- 👇 Roles visibles -->
                 <button class="role-button" data-role="cliente">Cliente</button>
+                <button class="role-button" data-role="mecanico">Mecánico</button>
                 <button class="role-button" data-role="proveedor">Proveedor</button>
             </div>
 
@@ -86,5 +89,21 @@
             </form>
         </div>
     </div>
+
+    <!-- 🕵‍♂ Script secreto para mostrar el botón de Administrador -->
+    <script>
+      document.addEventListener("keydown", (e) => {
+        if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "a") {
+          const adminBtn = document.getElementById("adminBtn");
+          if (adminBtn.style.display === "none") {
+            adminBtn.style.display = "block";
+            alert("🔓 Modo administrador habilitado");
+          } else {
+            adminBtn.style.display = "none";
+            alert("🔒 Modo administrador oculto");
+          }
+        }
+      });
+    </script>
 </body>
 </html>
